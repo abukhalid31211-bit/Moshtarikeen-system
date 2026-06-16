@@ -1001,13 +1001,27 @@ export default function Index() {
     return (
       <>
         <IPhoneStatusBarOverlay cfg={iCfg} onExit={() => updateConfig({ iPhoneConfig: { ...iCfg, enabled: false } })} />
-        <div style={{ paddingTop: 52 }} dir="rtl" className="min-h-screen bg-slate-50 flex">
-          {/* ── Sidebar (desktop) ── */}
+        <div style={{ paddingTop: 44 }} dir="rtl" className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+          {/* ── Mobile nav header (shown only on mobile in iPhone mode) ── */}
+          <header className="lg:hidden h-12 bg-white border-b border-slate-200 flex items-center justify-between px-3 sticky z-30 shadow-sm" style={{ top: 44 }}>
+            <div className="flex items-center gap-1">
+              {navItems.map(item => (
+                <button key={item.tab} onClick={() => setActiveTab(item.tab)}
+                  className={`p-1.5 rounded-lg transition-colors ${activeTab === item.tab ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  {React.cloneElement(item.icon as React.ReactElement, { size: 14 })}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">
+              {navItems.find(n => n.tab === activeTab)?.label ?? 'النظام'}
+            </span>
+          </header>
+          {/* ── Sidebar (desktop only) ── */}
           <motion.aside
             animate={{ width: sidebarCollapsed ? 72 : 256 }}
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="bg-gradient-to-b from-slate-900 to-slate-800 text-white hidden lg:flex flex-col sticky h-screen shadow-2xl z-10 overflow-hidden flex-shrink-0"
-            style={{ top: 52 }}
+            style={{ top: 44 }}
           >
             <div className="p-4 border-b border-white/10 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg flex-shrink-0">
@@ -1299,7 +1313,7 @@ function hexLuma(hex: string): number {
   return (0.299*r + 0.587*g + 0.114*b) / 255;
 }
 
-function IPhoneStatusBarOverlay({ cfg, onExit }: {
+function IPhoneStatusBarOverlay({ cfg, onExit: _onExit }: {
   cfg: SystemConfig['iPhoneConfig'];
   onExit: () => void;
 }) {
@@ -1308,7 +1322,6 @@ function IPhoneStatusBarOverlay({ cfg, onExit }: {
     const n = new Date();
     return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
   });
-  const [showExit, setShowExit] = React.useState(false);
 
   React.useEffect(() => {
     if (cfg.customTime) { setTime(cfg.customTime); return; }
@@ -1327,7 +1340,7 @@ function IPhoneStatusBarOverlay({ cfg, onExit }: {
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, height: 52,
+      position: 'fixed', top: 0, left: 0, right: 0, height: 44,
       zIndex: 9999, display: 'flex', alignItems: 'center',
       backgroundColor: bg, backdropFilter: 'blur(12px)',
       borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`,
@@ -1337,11 +1350,11 @@ function IPhoneStatusBarOverlay({ cfg, onExit }: {
 
       {/* ── LEFT: Time + Bell ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 80 }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color: fg, letterSpacing: -0.3, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: fg, letterSpacing: -0.3, fontVariantNumeric: 'tabular-nums' }}>
           {time}
         </span>
         {cfg.showNotification && (
-          <svg width="14" height="15" viewBox="0 0 14 15" fill="none">
+          <svg width="13" height="14" viewBox="0 0 14 15" fill="none">
             <path d="M7 1a4.5 4.5 0 00-4.5 4.5v2.5l-1 1.5h11l-1-1.5V5.5A4.5 4.5 0 007 1z"
               fill={fg} opacity="0.85" />
             <path d="M5.5 11.5a1.5 1.5 0 003 0" stroke={fg} strokeWidth="1.2" fill="none" />
@@ -1352,42 +1365,22 @@ function IPhoneStatusBarOverlay({ cfg, onExit }: {
       {/* ── CENTER: Dynamic Island ── */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <div
-          onClick={() => setShowExit(v => !v)}
           style={{
-            width: isRec ? 130 : 120, height: 34, background: '#000',
+            width: isRec ? 110 : 100, height: 28, background: '#000',
             borderRadius: 20, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 7, cursor: 'pointer',
+            justifyContent: 'center', gap: 7,
             transition: 'width 0.3s ease',
             boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
           }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#111', border: '1.5px solid #2a2a2a' }} />
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#111', border: '1.5px solid #2a2a2a' }} />
           {isRec && (
             <span style={{
-              width: 9, height: 9, borderRadius: '50%', background: '#ef4444',
+              width: 8, height: 8, borderRadius: '50%', background: '#ef4444',
               boxShadow: '0 0 7px 2px rgba(239,68,68,0.6)',
               animation: 'iphonePulse 1.4s ease-in-out infinite',
             }} />
           )}
         </div>
-        {/* Exit popup on island click */}
-        {showExit && (
-          <div style={{
-            position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
-            background: '#1c1c1e', borderRadius: 14, padding: '10px 18px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.45)', zIndex: 10000,
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}>إيقاف وضع الآيفون؟</span>
-            <button onClick={onExit} style={{
-              background: '#ef4444', color: '#fff', border: 'none',
-              borderRadius: 9, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            }}>إيقاف</button>
-            <button onClick={() => setShowExit(false)} style={{
-              background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none',
-              borderRadius: 9, padding: '4px 10px', fontSize: 12, cursor: 'pointer',
-            }}>لا</button>
-          </div>
-        )}
       </div>
 
       {/* ── RIGHT: Signal + WiFi + Network + Battery ── */}
