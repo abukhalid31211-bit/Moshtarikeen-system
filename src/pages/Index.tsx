@@ -1003,18 +1003,13 @@ export default function Index() {
         <IPhoneStatusBarOverlay cfg={iCfg} onExit={() => updateConfig({ iPhoneConfig: { ...iCfg, enabled: false } })} />
         <div style={{ paddingTop: 44 }} dir="rtl" className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
           {/* ── Mobile nav header (shown only on mobile in iPhone mode) ── */}
-          <header className="lg:hidden h-12 bg-white border-b border-slate-200 flex items-center justify-between px-3 sticky z-30 shadow-sm" style={{ top: 44 }}>
-            <div className="flex items-center gap-1">
-              {navItems.map(item => (
-                <button key={item.tab} onClick={() => setActiveTab(item.tab)}
-                  className={`p-1.5 rounded-lg transition-colors ${activeTab === item.tab ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                  {React.cloneElement(item.icon as React.ReactElement, { size: 14 })}
-                </button>
-              ))}
-            </div>
-            <span className="text-xs font-bold text-slate-600 truncate max-w-[120px]">
-              {navItems.find(n => n.tab === activeTab)?.label ?? 'النظام'}
-            </span>
+          <header className="lg:hidden h-11 bg-gradient-to-b from-slate-900 to-slate-800 flex items-center gap-1 px-2 sticky z-30 overflow-x-auto" style={{ top: 44 }}>
+            {navItems.map(item => (
+              <button key={item.tab} onClick={() => setActiveTab(item.tab)}
+                className={`flex-shrink-0 p-2 rounded-xl transition-colors ${activeTab === item.tab ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+                {React.cloneElement(item.icon as React.ReactElement, { size: 17 })}
+              </button>
+            ))}
           </header>
           {/* ── Sidebar (desktop only) ── */}
           <motion.aside
@@ -1039,16 +1034,16 @@ export default function Index() {
               ))}
             </nav>
           </motion.aside>
-          {/* ── Main content ── */}
-          <main className="flex-1 overflow-auto min-w-0">
+          {/* ── Main content (compact iPhone-mode sizing) ── */}
+          <main className="flex-1 overflow-auto min-w-0 text-sm">
             <AnimatePresence mode="wait">
-              {activeTab === 'dashboard' && <motion.div key="db" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><DashboardTab stats={liveStats} subscribers={subscribers} operations={operations} institutionalText={systemConfig.institutionalText} sectionName={sn.dashboard} /></motion.div>}
-              {activeTab === 'systemAdmin' && <motion.div key="sa" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><SystemAdminTab systemConfig={systemConfig} onConfigChange={updateConfig} subscribersCount={subscribers.length} sectionName={sn.systemAdmin} operations={operations} onOperationsChange={setOperations} /></motion.div>}
-              {activeTab === 'admin' && <motion.div key="adm" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><AdminPanel subscribers={subscribers} operations={operations} sectionName={sn.admin} systemConfig={systemConfig} /></motion.div>}
-              {activeTab === 'addOperations' && <motion.div key="ao" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><AddOperationsTab operations={operations} onOperationsChange={setOperations} subscriberNames={subscribers.map(s => s.name)} sectionName={sn.addOperations} /></motion.div>}
-              {activeTab === 'addSubscriber' && <motion.div key="as" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><AddSubscriberTab subscribers={subscribers} onSubscribersChange={setSubscribers} sectionName={sn.addSubscriber} operations={operations} onOperationsChange={setOperations} /></motion.div>}
-              {activeTab === 'reports' && <motion.div key="rep" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><ReportsTab subscribers={subscribers} operations={operations} /></motion.div>}
-              {activeTab === 'settings' && <motion.div key="set" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full"><SettingsTab isDark={isDark} onDarkToggle={() => setIsDark(!isDark)} subscribers={subscribers} operations={operations} systemConfig={systemConfig} onSubscribersChange={setSubscribers} onOperationsChange={setOperations} onConfigChange={updateConfig} /></motion.div>}
+              {activeTab === 'dashboard' && <motion.div key="db" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><DashboardTab stats={liveStats} subscribers={subscribers} operations={operations} institutionalText={systemConfig.institutionalText} sectionName={sn.dashboard} /></motion.div>}
+              {activeTab === 'systemAdmin' && <motion.div key="sa" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><SystemAdminTab systemConfig={systemConfig} onConfigChange={updateConfig} subscribersCount={subscribers.length} sectionName={sn.systemAdmin} operations={operations} onOperationsChange={setOperations} /></motion.div>}
+              {activeTab === 'admin' && <motion.div key="adm" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><AdminPanel subscribers={subscribers} operations={operations} sectionName={sn.admin} systemConfig={systemConfig} /></motion.div>}
+              {activeTab === 'addOperations' && <motion.div key="ao" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><AddOperationsTab operations={operations} onOperationsChange={setOperations} subscriberNames={subscribers.map(s => s.name)} sectionName={sn.addOperations} /></motion.div>}
+              {activeTab === 'addSubscriber' && <motion.div key="as" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><AddSubscriberTab subscribers={subscribers} onSubscribersChange={setSubscribers} sectionName={sn.addSubscriber} operations={operations} onOperationsChange={setOperations} /></motion.div>}
+              {activeTab === 'reports' && <motion.div key="rep" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><ReportsTab subscribers={subscribers} operations={operations} /></motion.div>}
+              {activeTab === 'settings' && <motion.div key="set" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><SettingsTab isDark={isDark} onDarkToggle={() => setIsDark(!isDark)} subscribers={subscribers} operations={operations} systemConfig={systemConfig} onSubscribersChange={setSubscribers} onOperationsChange={setOperations} onConfigChange={updateConfig} /></motion.div>}
             </AnimatePresence>
           </main>
         </div>
@@ -1318,19 +1313,17 @@ function IPhoneStatusBarOverlay({ cfg, onExit: _onExit }: {
   onExit: () => void;
 }) {
   const [time, setTime] = React.useState(() => {
-    if (cfg.customTime) return cfg.customTime;
     const n = new Date();
     return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
   });
 
   React.useEffect(() => {
-    if (cfg.customTime) { setTime(cfg.customTime); return; }
     const tick = setInterval(() => {
       const n = new Date();
       setTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`);
     }, 30000);
     return () => clearInterval(tick);
-  }, [cfg.customTime]);
+  }, []);
 
   const bg = cfg.statusBarBg || '#ffffff';
   const dark = hexLuma(bg) < 0.5;
