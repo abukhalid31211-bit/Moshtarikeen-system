@@ -1000,22 +1000,31 @@ export default function Index() {
   if (iCfg.enabled) {
     return (
       <>
+        {/* ── Fixed: iPhone Status Bar (always at very top) ── */}
         <IPhoneStatusBarOverlay cfg={iCfg} onExit={() => updateConfig({ iPhoneConfig: { ...iCfg, enabled: false } })} />
-        <div style={{ paddingTop: 44 }} dir="rtl" className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
-          {/* ── Mobile nav header (shown only on mobile in iPhone mode) ── */}
-          <header className="lg:hidden h-11 bg-gradient-to-b from-slate-900 to-slate-800 flex items-center gap-1 px-2 sticky z-30 overflow-x-auto" style={{ top: 44 }}>
-            {navItems.map(item => (
-              <button key={item.tab} onClick={() => setActiveTab(item.tab)}
-                className={`flex-shrink-0 p-2 rounded-xl transition-colors ${activeTab === item.tab ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}>
-                {React.cloneElement(item.icon as React.ReactElement, { size: 17 })}
-              </button>
-            ))}
-          </header>
-          {/* ── Sidebar (desktop only) ── */}
+
+        {/* ── Fixed: Mobile-only nav bar (sits below status bar, hidden on desktop) ── */}
+        <nav
+          className="lg:hidden fixed left-0 right-0 bg-gradient-to-b from-slate-900 to-slate-800 flex items-center gap-1 px-2 z-[9998] overflow-x-auto"
+          style={{ top: 44, height: 44 }}
+        >
+          {navItems.map(item => (
+            <button key={item.tab} onClick={() => setActiveTab(item.tab)}
+              className={`flex-shrink-0 p-2 rounded-xl transition-colors ${activeTab === item.tab ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}>
+              {React.cloneElement(item.icon as React.ReactElement, { size: 17 })}
+            </button>
+          ))}
+        </nav>
+
+        {/* ── Scrollable content area ── */}
+        {/* Mobile: padTop=88 (44 status bar + 44 mobile nav) | Desktop: padTop=44 */}
+        <div dir="rtl" className="bg-slate-50 flex pt-[88px] lg:pt-[44px] min-h-screen">
+
+          {/* ── Desktop Sidebar ── */}
           <motion.aside
             animate={{ width: sidebarCollapsed ? 72 : 256 }}
             transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="bg-gradient-to-b from-slate-900 to-slate-800 text-white hidden lg:flex flex-col sticky h-screen shadow-2xl z-10 overflow-hidden flex-shrink-0"
+            className="bg-gradient-to-b from-slate-900 to-slate-800 text-white hidden lg:flex flex-col sticky h-[calc(100vh-44px)] shadow-2xl z-10 overflow-hidden flex-shrink-0"
             style={{ top: 44 }}
           >
             <div className="p-4 border-b border-white/10 flex items-center gap-3">
@@ -1034,8 +1043,9 @@ export default function Index() {
               ))}
             </nav>
           </motion.aside>
-          {/* ── Main content (compact iPhone-mode sizing) ── */}
-          <main className="flex-1 overflow-auto min-w-0 text-sm">
+
+          {/* ── Main content (compact for iPhone mode) ── */}
+          <main className="flex-1 min-w-0 text-sm">
             <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && <motion.div key="db" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><DashboardTab stats={liveStats} subscribers={subscribers} operations={operations} institutionalText={systemConfig.institutionalText} sectionName={sn.dashboard} /></motion.div>}
               {activeTab === 'systemAdmin' && <motion.div key="sa" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><SystemAdminTab systemConfig={systemConfig} onConfigChange={updateConfig} subscribersCount={subscribers.length} sectionName={sn.systemAdmin} operations={operations} onOperationsChange={setOperations} /></motion.div>}
@@ -1854,7 +1864,7 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
               </div>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2 text-center">انقر على الجزيرة السوداء في الشريط لإيقاف الوضع</p>
+          <p className="text-xs text-slate-400 mt-2 text-center">يمكن إيقاف الوضع من زر التبديل أعلاه</p>
         </div>
       </div>
 
