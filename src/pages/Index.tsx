@@ -149,6 +149,9 @@ interface SystemConfig {
     screenEdgeColor: string;
     /** مؤشر الشريط السفلي (Home Indicator) */
     showHomeIndicator: boolean;
+    /** مقياس واجهة وضع الآيفون أفقياً وعمودياً بالنسبة المئوية */
+    widthScale: number;
+    heightScale: number;
   };
 }
 
@@ -739,6 +742,8 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     screenRadius: 48,
     screenEdgeColor: '#000000',
     showHomeIndicator: true,
+    widthScale: 100,
+    heightScale: 100,
   },
 };
 
@@ -750,6 +755,7 @@ const IPHONE_DEFAULTS: SystemConfig['iPhoneConfig'] = {
   showBatteryPct: true, wifiEnabled: true, wifiStrength: 3, signalEnabled: true,
   signalStrength: 4, networkType: '4G', customTime: '', statusBarBg: '#ffffff',
   showNotification: true, screenRadius: 48, screenEdgeColor: '#000000', showHomeIndicator: true,
+  widthScale: 100, heightScale: 100,
 };
 
 /** يدمج الإعدادات المحفوظة (قد تكون قديمة/ناقصة) مع القيم الافتراضية */
@@ -1319,13 +1325,24 @@ export default function Index() {
     // حشوة جانبية تتبع انحناء الشاشة حتى لا تُقص العناصر عند الزوايا
     const iSidePad = Math.round(iRadius * 0.32);
     const iBottomPad = iCfg.showHomeIndicator ? 26 : Math.round(iRadius * 0.2);
+    const iWidthScale = clampIPhoneScale(iCfg.widthScale);
+    const iHeightScale = clampIPhoneScale(iCfg.heightScale);
+    // نوسّع مساحة التخطيط بعكس المقياس ثم نضغطها بصرياً؛ لذلك تتغير كل العناصر
+    // (الخطوط والأزرار والبطاقات) مع العرض والطول، لا الحاوية وحدها.
+    const iPhoneScaleStyle: React.CSSProperties = {
+      width: `${10000 / iWidthScale}%`,
+      minHeight: `${10000 / iHeightScale}vh`,
+      transform: `scale(${iWidthScale / 100}, ${iHeightScale / 100})`,
+      transformOrigin: 'top left',
+    };
 
     return (
       <>
         {/* ── انحناء حواف الشاشة + مؤشر الشريط السفلي (بدون هيكل خارجي للجهاز) ── */}
         <IPhoneScreenCurvature cfg={iCfg} />
 
-        {/* ── Fixed: iPhone Status Bar (always at very top) ── */}
+        <div data-testid="iphone-ui-scale" style={iPhoneScaleStyle}>
+          {/* ── Fixed: iPhone Status Bar (always at very top) ── */}
         <IPhoneStatusBarOverlay cfg={iCfg} onExit={() => updateConfig({ iPhoneConfig: { ...iCfg, enabled: false } })} />
 
         {/* ── Fixed: Mobile-only nav bar (sits below status bar, hidden on desktop) ── */}
@@ -1382,6 +1399,7 @@ export default function Index() {
               {activeTab === 'settings' && <motion.div key="set" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-3 space-y-3 max-w-[1600px] mx-auto w-full"><SettingsTab isDark={isDark} onDarkToggle={() => setIsDark(!isDark)} subscribers={subscribers} operations={operations} systemConfig={systemConfig} onSubscribersChange={setSubscribers} onOperationsChange={setOperations} onConfigChange={updateConfig} /></motion.div>}
             </AnimatePresence>
           </main>
+        </div>
         </div>
       </>
     );
@@ -1649,6 +1667,13 @@ function clampRadius(v: unknown): number {
   const n = Number(v);
   if (!Number.isFinite(n)) return IPHONE_DEFAULTS.screenRadius;
   return Math.max(0, Math.min(80, Math.round(n)));
+}
+
+/** يحصر مقياس الواجهة كي يبقى المحتوى قابلاً للاستخدام */
+function clampIPhoneScale(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 100;
+  return Math.max(60, Math.min(140, Math.round(n)));
 }
 
 /**
@@ -2306,6 +2331,40 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
           <p className="text-xs text-slate-400 mt-2 text-center">
             الانحناء الحالي: <span className="font-bold text-slate-600">{icRadius}px</span> — يُطبَّق على حواف الموقع مباشرة
           </p>
+        </div>
+      </div>
+
+      {/* ── Row 1.25: UI scaling ── */}
+      <div className="bg-slate-50 ring-1 ring-slate-200 rounded-2xl p-4 space-y-4">
+        <div>
+          <p className="text-sm font-black text-slate-700">↔️↕️ حجم واجهة الآيفون</p>
+          <p className="text-xs text-slate-400 mt-0.5">يضبط العرض والطول للواجهة كاملة، بما فيها الخطوط والأزرار والبطاقات والمسافات.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {([
+            { key: 'widthScale' as const, label: 'المقياس الأفقي (العرض)', value: clampIPhoneScale(ic.widthScale) },
+            { key: 'heightScale' as const, label: 'المقياس العمودي (الطول)', value: clampIPhoneScale(ic.heightScale) },
+          ]).map(scale => (
+            <div key={scale.key} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-500">{scale.label}</label>
+                <span className="text-sm font-black text-slate-700">{scale.value}%</span>
+              </div>
+              <input type="range" min={60} max={140} step={1} value={scale.value}
+                onChange={e => update(scale.key === 'widthScale'
+                  ? { widthScale: clampIPhoneScale(e.target.value) }
+                  : { heightScale: clampIPhoneScale(e.target.value) })}
+                aria-label={scale.label} className="w-full accent-emerald-500" />
+              <div className="grid grid-cols-5 gap-1">
+                {[75, 90, 100, 115, 130].map(value => (
+                  <button key={value} onClick={() => update(scale.key === 'widthScale' ? { widthScale: value } : { heightScale: value })}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${scale.value === value ? 'bg-slate-800 text-white' : 'bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    {value}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
