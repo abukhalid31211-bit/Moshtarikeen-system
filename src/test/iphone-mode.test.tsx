@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import React from 'react';
 import Index from '../pages/Index';
@@ -20,7 +20,10 @@ function enableIPhone(extra: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('iPhone mode — curved screen edges, no external device frame', () => {
   it('renders the curvature overlay with a border radius when enabled', () => {
@@ -33,6 +36,15 @@ describe('iPhone mode — curved screen edges, no external device frame', () => 
     expect(curve.style.boxShadow).toContain('600px');
     expect(curve.style.position).toBe('fixed');
     expect(curve.style.pointerEvents).toBe('none');
+  });
+
+  it('ignores any saved custom time and shows the real device time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 28, 15, 34, 0));
+    enableIPhone({ customTime: '09:41' });
+    render(<Index />);
+    expect(screen.getByText('15:34')).toBeTruthy();
+    expect(screen.queryByText('09:41')).toBeNull();
   });
 
   it('honours a legacy saved config that has no screenRadius key', () => {

@@ -139,6 +139,7 @@ interface SystemConfig {
     signalEnabled: boolean;
     signalStrength: number;
     networkType: string;
+    /** حقل قديم للتوافق فقط؛ وقت الآيفون يُعرض دائماً من وقت الجهاز الفعلي */
     customTime: string;
     statusBarBg: string;
     showNotification: boolean;
@@ -753,7 +754,7 @@ const IPHONE_DEFAULTS: SystemConfig['iPhoneConfig'] = {
 
 /** يدمج الإعدادات المحفوظة (قد تكون قديمة/ناقصة) مع القيم الافتراضية */
 function resolveIPhoneCfg(cfg?: Partial<SystemConfig['iPhoneConfig']>): SystemConfig['iPhoneConfig'] {
-  return { ...IPHONE_DEFAULTS, ...(cfg ?? {}) };
+  return { ...IPHONE_DEFAULTS, ...(cfg ?? {}), customTime: '' };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1721,22 +1722,26 @@ function IPhoneScreenCurvature({ cfg }: { cfg: SystemConfig['iPhoneConfig'] }) {
   );
 }
 
+function formatIPhoneClock(date = new Date()): string {
+  return `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+}
+
+function useCurrentIPhoneTime(): string {
+  const [time, setTime] = React.useState(() => formatIPhoneClock());
+
+  React.useEffect(() => {
+    const tick = setInterval(() => setTime(formatIPhoneClock()), 30000);
+    return () => clearInterval(tick);
+  }, []);
+
+  return time;
+}
+
 function IPhoneStatusBarOverlay({ cfg, onExit: _onExit }: {
   cfg: SystemConfig['iPhoneConfig'];
   onExit: () => void;
 }) {
-  const [time, setTime] = React.useState(() => {
-    const n = new Date();
-    return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
-  });
-
-  React.useEffect(() => {
-    const tick = setInterval(() => {
-      const n = new Date();
-      setTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`);
-    }, 30000);
-    return () => clearInterval(tick);
-  }, []);
+  const time = useCurrentIPhoneTime();
 
   const bg = cfg.statusBarBg || '#ffffff';
   const dark = hexLuma(bg) < 0.5;
@@ -2212,6 +2217,7 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
 
   const dark = hexLuma(ic.statusBarBg || '#ffffff') < 0.5;
   const icRadius = clampRadius(ic.screenRadius);
+  const previewTime = useCurrentIPhoneTime();
   // المعاينة أصغر من الشاشة الحقيقية، فنُصغّر الانحناء بنفس النسبة تقريباً
   const previewRadius = Math.round(icRadius * 0.5);
 
@@ -2261,7 +2267,7 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
               borderBottom: '1px solid rgba(0,0,0,0.06)',
             }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: dark ? '#fff' : '#0f172a' }}>
-                {ic.customTime || '09:41'}
+                {previewTime}
                 {ic.showNotification && ' 🔔'}
               </span>
               <div style={{ width: 64, height: 20, background: '#000', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
@@ -2368,7 +2374,7 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
       </div>
 
       {/* ── Row 2: Status Bar Color + Dynamic Island ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Background color */}
         <div className="bg-slate-50 ring-1 ring-slate-200 rounded-2xl p-4 space-y-3">
@@ -2406,22 +2412,6 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
           <ToggleRow label="أيقونة إشعارات 🔔" value={ic.showNotification} onChange={v => update({ showNotification: v })} />
         </div>
 
-        {/* Time */}
-        <div className="bg-slate-50 ring-1 ring-slate-200 rounded-2xl p-4 space-y-3">
-          <p className="text-sm font-black text-slate-700">🕐 الوقت</p>
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 block">وقت مخصص</label>
-            <Input value={ic.customTime} onChange={e => update({ customTime: e.target.value })}
-              placeholder="09:41" className="h-9 border-slate-200 text-sm font-mono" />
-            <p className="text-xs text-slate-400">فارغ = الوقت الحقيقي تلقائياً</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {['09:41','12:00','16:00','20:00','00:00'].map(t => (
-              <button key={t} onClick={() => update({ customTime: t })}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${ic.customTime === t ? 'bg-slate-700 text-white' : 'bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-50'}`}>{t}</button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* ── Row 3: Battery + Signal + WiFi ── */}
