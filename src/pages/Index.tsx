@@ -142,6 +142,12 @@ interface SystemConfig {
     customTime: string;
     statusBarBg: string;
     showNotification: boolean;
+    /** انحناء حواف الشاشة بالبكسل — يجعل الموقع نفسه يبدو كشاشة آيفون (بدون هيكل خارجي) */
+    screenRadius: number;
+    /** لون ما خلف الانحناء (حافة الشاشة) */
+    screenEdgeColor: string;
+    /** مؤشر الشريط السفلي (Home Indicator) */
+    showHomeIndicator: boolean;
   };
 }
 
@@ -729,8 +735,26 @@ const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     customTime: '',
     statusBarBg: '#ffffff',
     showNotification: true,
+    screenRadius: 48,
+    screenEdgeColor: '#000000',
+    showHomeIndicator: true,
   },
 };
+
+// ─────────────────────────────────────────────────────────────
+// iPhone mode defaults (used whenever config is partial/legacy)
+// ─────────────────────────────────────────────────────────────
+const IPHONE_DEFAULTS: SystemConfig['iPhoneConfig'] = {
+  enabled: false, dynamicIsland: 'normal', batteryLevel: 85, batteryCharging: false,
+  showBatteryPct: true, wifiEnabled: true, wifiStrength: 3, signalEnabled: true,
+  signalStrength: 4, networkType: '4G', customTime: '', statusBarBg: '#ffffff',
+  showNotification: true, screenRadius: 48, screenEdgeColor: '#000000', showHomeIndicator: true,
+};
+
+/** يدمج الإعدادات المحفوظة (قد تكون قديمة/ناقصة) مع القيم الافتراضية */
+function resolveIPhoneCfg(cfg?: Partial<SystemConfig['iPhoneConfig']>): SystemConfig['iPhoneConfig'] {
+  return { ...IPHONE_DEFAULTS, ...(cfg ?? {}) };
+}
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -981,11 +1005,7 @@ export default function Index() {
   ];
 
   const isAdvanced = activeTab === 'advanced';
-  const iCfg = systemConfig.iPhoneConfig ?? {
-    enabled: false, dynamicIsland: 'normal', batteryLevel: 85, batteryCharging: false,
-    showBatteryPct: true, wifiEnabled: true, wifiStrength: 3, signalEnabled: true,
-    signalStrength: 4, networkType: '4G', customTime: '', statusBarBg: '#ffffff', showNotification: true,
-  };
+  const iCfg = resolveIPhoneCfg(systemConfig.iPhoneConfig);
 
   const systemDisplayDate = systemConfig.systemDate
     || new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -1294,15 +1314,23 @@ export default function Index() {
   );
 
   if (iCfg.enabled) {
+    const iRadius = clampRadius(iCfg.screenRadius);
+    // حشوة جانبية تتبع انحناء الشاشة حتى لا تُقص العناصر عند الزوايا
+    const iSidePad = Math.round(iRadius * 0.32);
+    const iBottomPad = iCfg.showHomeIndicator ? 26 : Math.round(iRadius * 0.2);
+
     return (
       <>
+        {/* ── انحناء حواف الشاشة + مؤشر الشريط السفلي (بدون هيكل خارجي للجهاز) ── */}
+        <IPhoneScreenCurvature cfg={iCfg} />
+
         {/* ── Fixed: iPhone Status Bar (always at very top) ── */}
         <IPhoneStatusBarOverlay cfg={iCfg} onExit={() => updateConfig({ iPhoneConfig: { ...iCfg, enabled: false } })} />
 
         {/* ── Fixed: Mobile-only nav bar (sits below status bar, hidden on desktop) ── */}
         <nav
-          className="lg:hidden fixed left-0 right-0 bg-gradient-to-b from-slate-900 to-slate-800 flex items-center gap-1 px-2 z-[9998] overflow-x-auto"
-          style={{ top: 44, height: 44 }}
+          className="lg:hidden fixed left-0 right-0 bg-gradient-to-b from-slate-900 to-slate-800 flex items-center gap-1 z-[9998] overflow-x-auto"
+          style={{ top: 44, height: 44, paddingLeft: 8 + iSidePad, paddingRight: 8 + iSidePad }}
         >
           {navItems.map(item => (
             <button key={item.tab} onClick={() => setActiveTab(item.tab)}
@@ -1314,7 +1342,8 @@ export default function Index() {
 
         {/* ── Scrollable content area ── */}
         {/* Mobile: padTop=88 (44 status bar + 44 mobile nav) | Desktop: padTop=44 */}
-        <div dir="rtl" className="bg-slate-50 flex pt-[88px] lg:pt-[44px] min-h-screen">
+        <div dir="rtl" className="bg-slate-50 flex pt-[88px] lg:pt-[44px] min-h-screen"
+          style={{ paddingBottom: iBottomPad }}>
 
           {/* ── Desktop Sidebar ── */}
           <motion.aside
@@ -1614,6 +1643,84 @@ function hexLuma(hex: string): number {
   return (0.299*r + 0.587*g + 0.114*b) / 255;
 }
 
+/** يحصر نصف قطر انحناء الشاشة ضمن مدى آمن (0 = زوايا قائمة) */
+function clampRadius(v: unknown): number {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return IPHONE_DEFAULTS.screenRadius;
+  return Math.max(0, Math.min(80, Math.round(n)));
+}
+
+/**
+ * انحناء حواف الشاشة — يجعل الموقع نفسه يبدو وكأنه معروض على شاشة آيفون
+ * من الداخل: زوايا منحنية + مؤشر الشريط السفلي، بدون أي هيكل/إطار خارجي للجهاز.
+ *
+ * الفكرة: طبقة ثابتة تغطي كامل نافذة العرض بزوايا منحنية، ومعها ظل خارجي
+ * ضخم (box-shadow spread) يُرسم خارج الشكل المنحني فقط — أي أنه يملأ
+ * المساحات الأربع بين قوس الانحناء وزاوية الشاشة القائمة، فيظهر الموقع
+ * كأن حوافه مقصوصة بانحناء الشاشة، بما في ذلك النوافذ المنبثقة والتنبيهات.
+ */
+function IPhoneScreenCurvature({ cfg }: { cfg: SystemConfig['iPhoneConfig'] }) {
+  const R = clampRadius(cfg.screenRadius);
+  const edge = cfg.screenEdgeColor || '#000000';
+
+  // خلفية الصفحة (منطقة السحب الزائد) بلون حافة الشاشة حتى لا يظهر أبيض حول الانحناء،
+  // وإخفاء شريط التمرير لأن شاشة الآيفون لا تُظهر شريط تمرير دائماً.
+  React.useEffect(() => {
+    if (R <= 0) return;
+    const html = document.documentElement;
+    const prevHtmlBg = html.style.backgroundColor;
+    const prevBodyBg = document.body.style.backgroundColor;
+    html.style.backgroundColor = edge;
+    document.body.style.backgroundColor = edge;
+
+    const styleEl = document.createElement('style');
+    styleEl.setAttribute('data-iphone-screen', '');
+    styleEl.textContent =
+      'html.iphone-screen-mode{scrollbar-width:none;-ms-overflow-style:none}' +
+      'html.iphone-screen-mode::-webkit-scrollbar,' +
+      'html.iphone-screen-mode body::-webkit-scrollbar{width:0;height:0;display:none}';
+    document.head.appendChild(styleEl);
+    html.classList.add('iphone-screen-mode');
+
+    return () => {
+      html.style.backgroundColor = prevHtmlBg;
+      document.body.style.backgroundColor = prevBodyBg;
+      html.classList.remove('iphone-screen-mode');
+      styleEl.remove();
+    };
+  }, [edge, R]);
+
+  return (
+    <>
+      {R > 0 && (
+        <div
+          aria-hidden="true"
+          data-testid="iphone-screen-curvature"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2147483000, pointerEvents: 'none',
+            borderRadius: R,
+            // الظل الخارجي يملأ زوايا الشاشة الأربع فقط (خارج القوس المنحني)
+            boxShadow: `0 0 0 600px ${edge}, inset 0 0 0 1px rgba(255,255,255,0.05)`,
+          }}
+        />
+      )}
+
+      {cfg.showHomeIndicator && (
+        <div
+          aria-hidden="true"
+          data-testid="iphone-home-indicator"
+          style={{
+            position: 'fixed', bottom: 7, left: '50%', transform: 'translateX(-50%)',
+            width: 138, height: 5, borderRadius: 999, background: '#ffffff',
+            mixBlendMode: 'difference', opacity: 0.9,
+            zIndex: 2147483001, pointerEvents: 'none',
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 function IPhoneStatusBarOverlay({ cfg, onExit: _onExit }: {
   cfg: SystemConfig['iPhoneConfig'];
   onExit: () => void;
@@ -1637,6 +1744,10 @@ function IPhoneStatusBarOverlay({ cfg, onExit: _onExit }: {
   const fgSub = dark ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.28)';
   const isRec = cfg.dynamicIsland === 'recording';
 
+  // إزاحة أفقية تتبع انحناء الشاشة حتى لا تختفي الأيقونات داخل الزوايا المنحنية
+  const radius = clampRadius(cfg.screenRadius);
+  const inset = 14 + Math.round(radius * 0.32);
+
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, height: 44,
@@ -1644,7 +1755,8 @@ function IPhoneStatusBarOverlay({ cfg, onExit: _onExit }: {
       backgroundColor: bg, backdropFilter: 'blur(12px)',
       borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`,
       boxShadow: '0 1px 12px rgba(0,0,0,0.08)',
-      userSelect: 'none', paddingLeft: 14, paddingRight: 14,
+      borderTopLeftRadius: radius, borderTopRightRadius: radius,
+      userSelect: 'none', paddingLeft: inset, paddingRight: inset,
     }}>
 
       {/* ── LEFT: Time + Bell ── */}
@@ -2062,7 +2174,7 @@ function SystemAdminTab({ systemConfig, onConfigChange, subscribersCount, sectio
           <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2">
             <span style={{ fontSize: 18 }}>📱</span> محاكي iPhone 17 Pro Max
           </CardTitle>
-          <CardDescription className="text-xs">يعرض النظام كاملاً داخل إطار آيفون واقعي مع ضبط شريط الحالة</CardDescription>
+          <CardDescription className="text-xs">يعرض الموقع نفسه بحواف شاشة آيفون منحنية — بدون هيكل الجهاز الخارجي</CardDescription>
         </CardHeader>
         <CardContent>
           <IPhoneLauncherSettings systemConfig={systemConfig} onConfigChange={onConfigChange} />
@@ -2080,11 +2192,7 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
   systemConfig: SystemConfig;
   onConfigChange: (p: Partial<SystemConfig>) => void;
 }) {
-  const ic = systemConfig.iPhoneConfig ?? {
-    enabled: false, dynamicIsland: 'normal', batteryLevel: 85, batteryCharging: false,
-    showBatteryPct: true, wifiEnabled: true, wifiStrength: 3, signalEnabled: true,
-    signalStrength: 4, networkType: '4G', customTime: '', statusBarBg: '#ffffff', showNotification: true,
-  };
+  const ic = resolveIPhoneCfg(systemConfig.iPhoneConfig);
 
   const update = (patch: Partial<typeof ic>) =>
     onConfigChange({ iPhoneConfig: { ...ic, ...patch } });
@@ -2103,6 +2211,9 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
   );
 
   const dark = hexLuma(ic.statusBarBg || '#ffffff') < 0.5;
+  const icRadius = clampRadius(ic.screenRadius);
+  // المعاينة أصغر من الشاشة الحقيقية، فنُصغّر الانحناء بنفس النسبة تقريباً
+  const previewRadius = Math.round(icRadius * 0.5);
 
   return (
     <div className="space-y-5">
@@ -2116,7 +2227,7 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
             <div>
               <p className={`text-sm font-black ${ic.enabled ? 'text-white' : 'text-slate-700'}`}>📱 تفعيل وضع الآيفون</p>
               <p className={`text-xs mt-0.5 ${ic.enabled ? 'text-slate-400' : 'text-slate-400'}`}>
-                {ic.enabled ? '🟢 شريط الحالة يظهر في الأعلى' : 'الوضع الاعتيادي للنظام'}
+                {ic.enabled ? '🟢 الموقع معروض بحواف شاشة منحنية' : 'الوضع الاعتيادي للنظام'}
               </p>
             </div>
             <button onClick={() => update({ enabled: !ic.enabled })}
@@ -2132,35 +2243,127 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
           )}
         </div>
 
-        {/* Live preview */}
+        {/* Live preview — معاينة الشاشة المنحنية بالكامل */}
         <div className="bg-slate-50 ring-1 ring-slate-200 rounded-2xl p-4">
-          <p className="text-xs font-bold text-slate-500 mb-3">معاينة شريط الحالة</p>
+          <p className="text-xs font-bold text-slate-500 mb-3">معاينة الشاشة (بدون هيكل خارجي)</p>
+          {/* الحاوية تمثّل نافذة العرض؛ الزوايا منحنية تماماً كما ستبدو في الموقع */}
           <div style={{
-            background: ic.statusBarBg || '#fff',
-            borderRadius: 12, padding: '0 12px',
-            height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            position: 'relative', overflow: 'hidden',
+            borderRadius: previewRadius,
+            background: '#f8fafc',
+            boxShadow: `0 2px 10px rgba(0,0,0,0.10), inset 0 0 0 1px rgba(0,0,0,0.06)`,
           }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: dark ? '#fff' : '#0f172a' }}>
-              {ic.customTime || '09:41'}
-              {ic.showNotification && ' 🔔'}
-            </span>
-            <div style={{ width: 72, height: 22, background: '#000', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#111' }} />
-              {ic.dynamicIsland === 'recording' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }} />}
+            {/* شريط الحالة */}
+            <div style={{
+              background: ic.statusBarBg || '#fff',
+              padding: `0 ${12 + Math.round(previewRadius * 0.32)}px`,
+              height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderBottom: '1px solid rgba(0,0,0,0.06)',
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: dark ? '#fff' : '#0f172a' }}>
+                {ic.customTime || '09:41'}
+                {ic.showNotification && ' 🔔'}
+              </span>
+              <div style={{ width: 64, height: 20, background: '#000', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#111' }} />
+                {ic.dynamicIsland === 'recording' && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }} />}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5 }}>
+                  {[1,2,3,4].map(i => <div key={i} style={{ width: 3, height: 3+i*2.5, borderRadius: 1, background: i <= ic.signalStrength ? (dark ? '#fff' : '#0f172a') : 'rgba(100,100,100,0.3)' }} />)}
+                </div>
+                {ic.networkType && <span style={{ fontSize: 10, fontWeight: 800, color: dark ? '#fff' : '#0f172a' }}>{ic.networkType}</span>}
+                {ic.showBatteryPct && <span style={{ fontSize: 10, fontWeight: 700, color: dark ? '#fff' : '#0f172a' }}>{ic.batteryLevel}%</span>}
+                <div style={{ width: 18, height: 9, border: `1.5px solid ${dark ? '#fff' : '#0f172a'}`, borderRadius: 2.5, position: 'relative', opacity: 0.8 }}>
+                  <div style={{ position: 'absolute', left: 1, top: 1, height: 5, borderRadius: 1, background: ic.batteryCharging ? '#22c55e' : (dark ? '#fff' : '#0f172a'), width: `${Math.max(1, ic.batteryLevel * 0.13)}px` }} />
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5 }}>
-                {[1,2,3,4].map(i => <div key={i} style={{ width: 3, height: 3+i*2.5, borderRadius: 1, background: i <= ic.signalStrength ? (dark ? '#fff' : '#0f172a') : 'rgba(100,100,100,0.3)' }} />)}
+
+            {/* محتوى وهمي يمثّل الموقع داخل الشاشة */}
+            <div style={{ padding: `10px ${10 + Math.round(previewRadius * 0.32)}px 20px` }}>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                {[0,1,2].map(i => <div key={i} style={{ flex: 1, height: 30, borderRadius: 8, background: i === 0 ? '#d1fae5' : '#e2e8f0' }} />)}
               </div>
-              {ic.networkType && <span style={{ fontSize: 10, fontWeight: 800, color: dark ? '#fff' : '#0f172a' }}>{ic.networkType}</span>}
-              {ic.showBatteryPct && <span style={{ fontSize: 10, fontWeight: 700, color: dark ? '#fff' : '#0f172a' }}>{ic.batteryLevel}%</span>}
-              <div style={{ width: 18, height: 9, border: `1.5px solid ${dark ? '#fff' : '#0f172a'}`, borderRadius: 2.5, position: 'relative', opacity: 0.8 }}>
-                <div style={{ position: 'absolute', left: 1, top: 1, height: 5, borderRadius: 1, background: ic.batteryCharging ? '#22c55e' : (dark ? '#fff' : '#0f172a'), width: `${Math.max(1, ic.batteryLevel * 0.13)}px` }} />
-              </div>
+              <div style={{ height: 8, width: '70%', borderRadius: 4, background: '#e2e8f0', marginBottom: 6 }} />
+              <div style={{ height: 8, width: '45%', borderRadius: 4, background: '#e2e8f0' }} />
+            </div>
+
+            {/* مؤشر الشريط السفلي */}
+            {ic.showHomeIndicator && (
+              <div style={{
+                position: 'absolute', bottom: 5, left: '50%', transform: 'translateX(-50%)',
+                width: 84, height: 4, borderRadius: 999, background: '#0f172a', opacity: 0.55,
+              }} />
+            )}
+          </div>
+          <p className="text-xs text-slate-400 mt-2 text-center">
+            الانحناء الحالي: <span className="font-bold text-slate-600">{icRadius}px</span> — يُطبَّق على حواف الموقع مباشرة
+          </p>
+        </div>
+      </div>
+
+      {/* ── Row 1.5: شكل الشاشة — الانحناء ── */}
+      <div className="bg-slate-50 ring-1 ring-slate-200 rounded-2xl p-4 space-y-4">
+        <div>
+          <p className="text-sm font-black text-slate-700">📐 انحناء حواف الشاشة</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            يجعل حواف الموقع منحنية كشاشة آيفون من الداخل — بدون عرض هيكل الجهاز الخارجي
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* المنزلق */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-500">درجة الانحناء</label>
+              <span className="text-sm font-black text-slate-700">{icRadius}px</span>
+            </div>
+            <input type="range" min={0} max={80} step={1} value={icRadius}
+              onChange={e => update({ screenRadius: clampRadius(e.target.value) })}
+              aria-label="درجة انحناء حواف الشاشة"
+              className="w-full accent-emerald-500" />
+            <div className="grid grid-cols-5 gap-1">
+              {[
+                { v: 0,  l: 'مستقيم' },
+                { v: 24, l: 'خفيف' },
+                { v: 40, l: 'متوسط' },
+                { v: 48, l: 'آيفون' },
+                { v: 64, l: 'قوي' },
+              ].map(p => (
+                <button key={p.v} onClick={() => update({ screenRadius: p.v })}
+                  className={`py-1.5 text-xs font-bold rounded-lg transition-all ${icRadius === p.v ? 'bg-slate-800 text-white' : 'bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  {p.l}
+                </button>
+              ))}
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2 text-center">يمكن إيقاف الوضع من زر التبديل أعلاه</p>
+
+          {/* لون الحافة + مؤشر الشريط السفلي */}
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 block">لون حافة الشاشة (خلف الانحناء)</label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={ic.screenEdgeColor || '#000000'}
+                  onChange={e => update({ screenEdgeColor: e.target.value })}
+                  aria-label="لون حافة الشاشة"
+                  className="w-10 h-9 rounded-xl border-0 cursor-pointer bg-transparent" />
+                <input type="text" value={ic.screenEdgeColor || '#000000'}
+                  onChange={e => update({ screenEdgeColor: e.target.value })}
+                  placeholder="#000000" maxLength={7}
+                  className="flex-1 h-9 border border-slate-200 rounded-lg px-3 text-sm font-mono" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {['#000000','#0f172a','#1e293b','#111827','#f8fafc','#ffffff'].map(c => (
+                  <button key={c} onClick={() => update({ screenEdgeColor: c })}
+                    aria-label={`لون الحافة ${c}`}
+                    style={{ background: c, width: 24, height: 24, borderRadius: 6, border: ic.screenEdgeColor === c ? '2px solid #10b981' : '1.5px solid rgba(0,0,0,0.15)', cursor: 'pointer' }} />
+                ))}
+              </div>
+            </div>
+            <ToggleRow label="مؤشر الشريط السفلي" desc="الخط الصغير أسفل شاشة الآيفون"
+              value={ic.showHomeIndicator} onChange={v => update({ showHomeIndicator: v })} />
+          </div>
         </div>
       </div>
 
