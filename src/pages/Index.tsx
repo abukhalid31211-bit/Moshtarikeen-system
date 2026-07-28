@@ -1327,9 +1327,12 @@ export default function Index() {
     const iBottomPad = iCfg.showHomeIndicator ? 26 : Math.round(iRadius * 0.2);
     const iWidthScale = clampIPhoneScale(iCfg.widthScale);
     const iHeightScale = clampIPhoneScale(iCfg.heightScale);
+    // «الوضع السابق» = بلا أي تحجيم مخصص (100%/100%) — في هذه الحالة لا نضيف
+    // أي style/transform على الحاوية حتى تبقى مطابقة حرفياً لما كانت عليه قبل هذه الميزة.
+    const isIPhoneScaleDefault = iWidthScale === 100 && iHeightScale === 100;
     // نوسّع مساحة التخطيط بعكس المقياس ثم نضغطها بصرياً؛ لذلك تتغير كل العناصر
     // (الخطوط والأزرار والبطاقات) مع العرض والطول، لا الحاوية وحدها.
-    const iPhoneScaleStyle: React.CSSProperties = {
+    const iPhoneScaleStyle: React.CSSProperties | undefined = isIPhoneScaleDefault ? undefined : {
       width: `${10000 / iWidthScale}%`,
       minHeight: `${10000 / iHeightScale}vh`,
       transform: `scale(${iWidthScale / 100}, ${iHeightScale / 100})`,
@@ -2242,6 +2245,10 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
 
   const dark = hexLuma(ic.statusBarBg || '#ffffff') < 0.5;
   const icRadius = clampRadius(ic.screenRadius);
+  const iWidthScaleVal = clampIPhoneScale(ic.widthScale);
+  const iHeightScaleVal = clampIPhoneScale(ic.heightScale);
+  // «الوضع السابق» = بلا أي تحجيم مخصص (100%/100%)، أي الحالة قبل إضافة هذه الميزة
+  const isIPhoneScaleDefault = iWidthScaleVal === 100 && iHeightScaleVal === 100;
   const previewTime = useCurrentIPhoneTime();
   // المعاينة أصغر من الشاشة الحقيقية، فنُصغّر الانحناء بنفس النسبة تقريباً
   const previewRadius = Math.round(icRadius * 0.5);
@@ -2336,14 +2343,30 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
 
       {/* ── Row 1.25: UI scaling ── */}
       <div className="bg-slate-50 ring-1 ring-slate-200 rounded-2xl p-4 space-y-4">
-        <div>
-          <p className="text-sm font-black text-slate-700">↔️↕️ حجم واجهة الآيفون</p>
-          <p className="text-xs text-slate-400 mt-0.5">يضبط العرض والطول للواجهة كاملة، بما فيها الخطوط والأزرار والبطاقات والمسافات.</p>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-black text-slate-700">↔️↕️ حجم واجهة الآيفون</p>
+            <p className="text-xs text-slate-400 mt-0.5">تحكم بحجم واجهة الآيفون كاملة أفقياً وعمودياً، بما في ذلك الخطوط والأزرار والبطاقات.</p>
+          </div>
+          {/* زر العودة الحرفية لما كان عليه وضع الآيفون قبل إضافة ميزة التحجيم (100%/100% بلا أي تأثير Transform) */}
+          <button
+            type="button"
+            onClick={() => update({ widthScale: 100, heightScale: 100 })}
+            disabled={isIPhoneScaleDefault}
+            aria-label="العودة إلى الوضع السابق"
+            data-testid="iphone-scale-reset"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              isIPhoneScaleDefault
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}>
+            <RotateCcw size={14} /> العودة إلى الوضع السابق
+          </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {([
-            { key: 'widthScale' as const, label: 'المقياس الأفقي (العرض)', value: clampIPhoneScale(ic.widthScale) },
-            { key: 'heightScale' as const, label: 'المقياس العمودي (الطول)', value: clampIPhoneScale(ic.heightScale) },
+            { key: 'widthScale' as const, label: 'المقياس الأفقي (العرض)', value: iWidthScaleVal },
+            { key: 'heightScale' as const, label: 'المقياس العمودي (الطول)', value: iHeightScaleVal },
           ]).map(scale => (
             <div key={scale.key} className="space-y-2">
               <div className="flex items-center justify-between">
@@ -2366,6 +2389,11 @@ function IPhoneLauncherSettings({ systemConfig, onConfigChange }: {
             </div>
           ))}
         </div>
+        <p data-testid="iphone-scale-status" className="text-xs text-slate-500 text-center">
+          {isIPhoneScaleDefault
+            ? 'الوضع السابق مفعل'
+            : `تطبيق مقياس مخصص: عرض ${iWidthScaleVal}% · طول ${iHeightScaleVal}%`}
+        </p>
       </div>
 
       {/* ── Row 1.5: شكل الشاشة — الانحناء ── */}
