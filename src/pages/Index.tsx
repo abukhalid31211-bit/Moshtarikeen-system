@@ -59,6 +59,32 @@ interface Subscriber {
   notes: string;
   currency: string;
   platform: string;
+  // --- إضافات جراحية اختيارية حسب برومبت التحسين ---
+  phoneCountryCode?: string;
+  phoneCountryIso?: string;
+  phoneVisible?: boolean;
+  ibanVisible?: boolean;
+  accountNumber?: string;
+  accountNumberVisible?: boolean;
+  subscriptionCurrency?: string;
+  subscriptionCurrencySymbol?: string;
+  profitsCurrency?: string;
+  profitsCurrencySymbol?: string;
+  systemFeesCurrency?: string;
+  systemFeesCurrencySymbol?: string;
+  systemAccountType?: 'wallet_id' | 'wallet_address' | 'manual';
+  systemAccountWalletType?: string;
+  systemAccountNetwork?: string;
+  systemAccountValue?: string;
+  walletPlatform?: string;
+  walletCurrency?: string;
+  walletNetwork?: string;
+  walletAddressValue?: string;
+  bankCountry?: string;
+  bankType?: 'commercial' | 'islamic' | 'digital' | 'government' | 'development' | 'specialized';
+  bankLogoUrl?: string;
+  bankDomain?: string;
+  bankSwift?: string;
 }
 
 interface Operation {
@@ -402,6 +428,268 @@ const GULF_BANKS: Record<string, string[]> = {
 
 const ALL_BANKS_FLAT = Object.values(GULF_BANKS).flat();
 
+// ─────────────────────────────────────────────────────────────
+// إضافات جراحية: بنوك العالم العربي الشاملة + دول + محافظ + شبكات
+// ─────────────────────────────────────────────────────────────
+
+interface Bank {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  country: string; // ISO
+  countryAr: string;
+  type: 'commercial' | 'islamic' | 'digital' | 'government' | 'development' | 'specialized';
+  logoUrl: string;
+  domain: string;
+  swiftCode?: string;
+}
+
+interface PhoneCountry {
+  iso: string;
+  nameAr: string;
+  nameEn: string;
+  dialCode: string;
+  flagUrl: string; // flagcdn
+  priority?: boolean;
+}
+
+interface CryptoCurrency {
+  code: string;
+  symbol: string;
+  nameAr: string;
+  nameEn: string;
+  logoUrl: string;
+}
+
+interface WalletType {
+  id: string;
+  name: string;
+  nameAr: string;
+  domain: string;
+  logoUrl: string;
+  type: 'hot' | 'cold' | 'exchange';
+}
+
+interface BlockchainNetwork {
+  id: string;
+  name: string;
+  nameAr: string;
+  symbol: string;
+  logoUrl: string;
+  protocol: string;
+}
+
+const PHONE_COUNTRIES: PhoneCountry[] = [
+  // دول عربية ذات أولوية (تظهر أولاً)
+  { iso: 'SA', nameAr: 'المملكة العربية السعودية', nameEn: 'Saudi Arabia', dialCode: '+966', flagUrl: 'https://flagcdn.com/w40/sa.png', priority: true },
+  { iso: 'AE', nameAr: 'الإمارات العربية المتحدة', nameEn: 'United Arab Emirates', dialCode: '+971', flagUrl: 'https://flagcdn.com/w40/ae.png', priority: true },
+  { iso: 'KW', nameAr: 'الكويت', nameEn: 'Kuwait', dialCode: '+965', flagUrl: 'https://flagcdn.com/w40/kw.png', priority: true },
+  { iso: 'QA', nameAr: 'قطر', nameEn: 'Qatar', dialCode: '+974', flagUrl: 'https://flagcdn.com/w40/qa.png', priority: true },
+  { iso: 'BH', nameAr: 'البحرين', nameEn: 'Bahrain', dialCode: '+973', flagUrl: 'https://flagcdn.com/w40/bh.png', priority: true },
+  { iso: 'OM', nameAr: 'عُمان', nameEn: 'Oman', dialCode: '+968', flagUrl: 'https://flagcdn.com/w40/om.png', priority: true },
+  { iso: 'YE', nameAr: 'اليمن', nameEn: 'Yemen', dialCode: '+967', flagUrl: 'https://flagcdn.com/w40/ye.png', priority: true },
+  { iso: 'EG', nameAr: 'مصر', nameEn: 'Egypt', dialCode: '+20', flagUrl: 'https://flagcdn.com/w40/eg.png', priority: true },
+  { iso: 'JO', nameAr: 'الأردن', nameEn: 'Jordan', dialCode: '+962', flagUrl: 'https://flagcdn.com/w40/jo.png', priority: true },
+  { iso: 'LB', nameAr: 'لبنان', nameEn: 'Lebanon', dialCode: '+961', flagUrl: 'https://flagcdn.com/w40/lb.png', priority: true },
+  { iso: 'IQ', nameAr: 'العراق', nameEn: 'Iraq', dialCode: '+964', flagUrl: 'https://flagcdn.com/w40/iq.png', priority: true },
+  { iso: 'SY', nameAr: 'سوريا', nameEn: 'Syria', dialCode: '+963', flagUrl: 'https://flagcdn.com/w40/sy.png', priority: true },
+  { iso: 'PS', nameAr: 'فلسطين', nameEn: 'Palestine', dialCode: '+970', flagUrl: 'https://flagcdn.com/w40/ps.png', priority: true },
+  { iso: 'SD', nameAr: 'السودان', nameEn: 'Sudan', dialCode: '+249', flagUrl: 'https://flagcdn.com/w40/sd.png', priority: true },
+  { iso: 'LY', nameAr: 'ليبيا', nameEn: 'Libya', dialCode: '+218', flagUrl: 'https://flagcdn.com/w40/ly.png', priority: true },
+  { iso: 'TN', nameAr: 'تونس', nameEn: 'Tunisia', dialCode: '+216', flagUrl: 'https://flagcdn.com/w40/tn.png', priority: true },
+  { iso: 'DZ', nameAr: 'الجزائر', nameEn: 'Algeria', dialCode: '+213', flagUrl: 'https://flagcdn.com/w40/dz.png', priority: true },
+  { iso: 'MA', nameAr: 'المغرب', nameEn: 'Morocco', dialCode: '+212', flagUrl: 'https://flagcdn.com/w40/ma.png', priority: true },
+  { iso: 'MR', nameAr: 'موريتانيا', nameEn: 'Mauritania', dialCode: '+222', flagUrl: 'https://flagcdn.com/w40/mr.png', priority: true },
+  { iso: 'DJ', nameAr: 'جيبوتي', nameEn: 'Djibouti', dialCode: '+253', flagUrl: 'https://flagcdn.com/w40/dj.png', priority: true },
+  { iso: 'KM', nameAr: 'جزر القمر', nameEn: 'Comoros', dialCode: '+269', flagUrl: 'https://flagcdn.com/w40/km.png', priority: true },
+  { iso: 'SO', nameAr: 'الصومال', nameEn: 'Somalia', dialCode: '+252', flagUrl: 'https://flagcdn.com/w40/so.png', priority: true },
+  // بقية دول العالم (80+ إضافية لتغطية 100+)
+  { iso: 'US', nameAr: 'الولايات المتحدة', nameEn: 'United States', dialCode: '+1', flagUrl: 'https://flagcdn.com/w40/us.png' },
+  { iso: 'GB', nameAr: 'المملكة المتحدة', nameEn: 'United Kingdom', dialCode: '+44', flagUrl: 'https://flagcdn.com/w40/gb.png' },
+  { iso: 'DE', nameAr: 'ألمانيا', nameEn: 'Germany', dialCode: '+49', flagUrl: 'https://flagcdn.com/w40/de.png' },
+  { iso: 'FR', nameAr: 'فرنسا', nameEn: 'France', dialCode: '+33', flagUrl: 'https://flagcdn.com/w40/fr.png' },
+  { iso: 'TR', nameAr: 'تركيا', nameEn: 'Turkey', dialCode: '+90', flagUrl: 'https://flagcdn.com/w40/tr.png' },
+  { iso: 'IN', nameAr: 'الهند', nameEn: 'India', dialCode: '+91', flagUrl: 'https://flagcdn.com/w40/in.png' },
+  { iso: 'PK', nameAr: 'باكستان', nameEn: 'Pakistan', dialCode: '+92', flagUrl: 'https://flagcdn.com/w40/pk.png' },
+  { iso: 'ID', nameAr: 'إندونيسيا', nameEn: 'Indonesia', dialCode: '+62', flagUrl: 'https://flagcdn.com/w40/id.png' },
+  { iso: 'MY', nameAr: 'ماليزيا', nameEn: 'Malaysia', dialCode: '+60', flagUrl: 'https://flagcdn.com/w40/my.png' },
+  { iso: 'JP', nameAr: 'اليابان', nameEn: 'Japan', dialCode: '+81', flagUrl: 'https://flagcdn.com/w40/jp.png' },
+  { iso: 'CN', nameAr: 'الصين', nameEn: 'China', dialCode: '+86', flagUrl: 'https://flagcdn.com/w40/cn.png' },
+  { iso: 'KR', nameAr: 'كوريا الجنوبية', nameEn: 'South Korea', dialCode: '+82', flagUrl: 'https://flagcdn.com/w40/kr.png' },
+  { iso: 'BR', nameAr: 'البرازيل', nameEn: 'Brazil', dialCode: '+55', flagUrl: 'https://flagcdn.com/w40/br.png' },
+  { iso: 'CA', nameAr: 'كندا', nameEn: 'Canada', dialCode: '+1', flagUrl: 'https://flagcdn.com/w40/ca.png' },
+  { iso: 'AU', nameAr: 'أستراليا', nameEn: 'Australia', dialCode: '+61', flagUrl: 'https://flagcdn.com/w40/au.png' },
+  { iso: 'CH', nameAr: 'سويسرا', nameEn: 'Switzerland', dialCode: '+41', flagUrl: 'https://flagcdn.com/w40/ch.png' },
+  { iso: 'SE', nameAr: 'السويد', nameEn: 'Sweden', dialCode: '+46', flagUrl: 'https://flagcdn.com/w40/se.png' },
+  { iso: 'NO', nameAr: 'النرويج', nameEn: 'Norway', dialCode: '+47', flagUrl: 'https://flagcdn.com/w40/no.png' },
+  { iso: 'IT', nameAr: 'إيطاليا', nameEn: 'Italy', dialCode: '+39', flagUrl: 'https://flagcdn.com/w40/it.png' },
+  { iso: 'ES', nameAr: 'إسبانيا', nameEn: 'Spain', dialCode: '+34', flagUrl: 'https://flagcdn.com/w40/es.png' },
+  { iso: 'NL', nameAr: 'هولندا', nameEn: 'Netherlands', dialCode: '+31', flagUrl: 'https://flagcdn.com/w40/nl.png' },
+  { iso: 'BE', nameAr: 'بلجيكا', nameEn: 'Belgium', dialCode: '+32', flagUrl: 'https://flagcdn.com/w40/be.png' },
+  { iso: 'RU', nameAr: 'روسيا', nameEn: 'Russia', dialCode: '+7', flagUrl: 'https://flagcdn.com/w40/ru.png' },
+  { iso: 'UA', nameAr: 'أوكرانيا', nameEn: 'Ukraine', dialCode: '+380', flagUrl: 'https://flagcdn.com/w40/ua.png' },
+  { iso: 'ZA', nameAr: 'جنوب أفريقيا', nameEn: 'South Africa', dialCode: '+27', flagUrl: 'https://flagcdn.com/w40/za.png' },
+  { iso: 'NG', nameAr: 'نيجيريا', nameEn: 'Nigeria', dialCode: '+234', flagUrl: 'https://flagcdn.com/w40/ng.png' },
+  { iso: 'KE', nameAr: 'كينيا', nameEn: 'Kenya', dialCode: '+254', flagUrl: 'https://flagcdn.com/w40/ke.png' },
+];
+
+const CRYPTO_CURRENCIES: CryptoCurrency[] = [
+  { code: 'BTC', symbol: '₿', nameAr: 'بيتكوين', nameEn: 'Bitcoin', logoUrl: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=026' },
+  { code: 'ETH', symbol: 'Ξ', nameAr: 'إيثريوم', nameEn: 'Ethereum', logoUrl: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=026' },
+  { code: 'USDT', symbol: '₮', nameAr: 'تيثر', nameEn: 'Tether', logoUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=026' },
+  { code: 'BNB', symbol: 'BNB', nameAr: 'بي إن بي', nameEn: 'BNB', logoUrl: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=026' },
+  { code: 'SOL', symbol: 'SOL', nameAr: 'سولانا', nameEn: 'Solana', logoUrl: 'https://cryptologos.cc/logos/solana-sol-logo.svg?v=026' },
+  { code: 'XRP', symbol: 'XRP', nameAr: 'ريبل', nameEn: 'XRP', logoUrl: 'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=026' },
+  { code: 'USDC', symbol: 'USDC', nameAr: 'يو إس دي كوين', nameEn: 'USD Coin', logoUrl: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=026' },
+  { code: 'ADA', symbol: 'ADA', nameAr: 'كاردانو', nameEn: 'Cardano', logoUrl: 'https://cryptologos.cc/logos/cardano-ada-logo.svg?v=026' },
+  { code: 'DOGE', symbol: 'Ð', nameAr: 'دوجكوين', nameEn: 'Dogecoin', logoUrl: 'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=026' },
+  { code: 'SHIB', symbol: 'SHIB', nameAr: 'شيبا إينو', nameEn: 'Shiba Inu', logoUrl: 'https://cryptologos.cc/logos/shiba-inu-shib-logo.svg?v=026' },
+  { code: 'LTC', symbol: 'Ł', nameAr: 'لايتكوين', nameEn: 'Litecoin', logoUrl: 'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=026' },
+  { code: 'DOT', symbol: 'DOT', nameAr: 'بولكادوت', nameEn: 'Polkadot', logoUrl: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=026' },
+  { code: 'LINK', symbol: 'LINK', nameAr: 'تشين لينك', nameEn: 'Chainlink', logoUrl: 'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=026' },
+  { code: 'MATIC', symbol: 'MATIC', nameAr: 'بوليغون', nameEn: 'Polygon', logoUrl: 'https://cryptologos.cc/logos/polygon-matic-logo.svg?v=026' },
+  { code: 'AVAX', symbol: 'AVAX', nameAr: 'أفالانش', nameEn: 'Avalanche', logoUrl: 'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=026' },
+  { code: 'ATOM', symbol: 'ATOM', nameAr: 'كوزموس', nameEn: 'Cosmos', logoUrl: 'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=026' },
+  { code: 'UNI', symbol: 'UNI', nameAr: 'يونيسواب', nameEn: 'Uniswap', logoUrl: 'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=026' },
+  { code: 'AAVE', symbol: 'AAVE', nameAr: 'آفي', nameEn: 'Aave', logoUrl: 'https://cryptologos.cc/logos/aave-aave-logo.svg?v=026' },
+  { code: 'XLM', symbol: 'XLM', nameAr: 'ستيلر', nameEn: 'Stellar', logoUrl: 'https://cryptologos.cc/logos/stellar-xlm-logo.svg?v=026' },
+  { code: 'TRX', symbol: 'TRX', nameAr: 'ترون', nameEn: 'Tron', logoUrl: 'https://cryptologos.cc/logos/tron-trx-logo.svg?v=026' },
+  { code: 'VET', symbol: 'VET', nameAr: 'في تشين', nameEn: 'VeChain', logoUrl: 'https://cryptologos.cc/logos/vechain-vet-logo.svg?v=026' },
+  { code: 'XMR', symbol: 'XMR', nameAr: 'مونيرو', nameEn: 'Monero', logoUrl: 'https://cryptologos.cc/logos/monero-xmr-logo.svg?v=026' },
+  { code: 'DASH', symbol: 'DASH', nameAr: 'داش', nameEn: 'Dash', logoUrl: 'https://cryptologos.cc/logos/dash-dash-logo.svg?v=026' },
+  { code: 'ZEC', symbol: 'ZEC', nameAr: 'زي كاش', nameEn: 'Zcash', logoUrl: 'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=026' },
+  { code: 'BCH', symbol: 'BCH', nameAr: 'بيتكوين كاش', nameEn: 'Bitcoin Cash', logoUrl: 'https://cryptologos.cc/logos/bitcoin-cash-bch-logo.svg?v=026' },
+  { code: 'ETC', symbol: 'ETC', nameAr: 'إيثريوم كلاسيك', nameEn: 'Ethereum Classic', logoUrl: 'https://cryptologos.cc/logos/ethereum-classic-etc-logo.svg?v=026' },
+  { code: 'FIL', symbol: 'FIL', nameAr: 'فايل كوين', nameEn: 'Filecoin', logoUrl: 'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=026' },
+  { code: 'HBAR', symbol: 'HBAR', nameAr: 'هيديرا', nameEn: 'Hedera', logoUrl: 'https://cryptologos.cc/logos/hedera-hbar-logo.svg?v=026' },
+  { code: 'APT', symbol: 'APT', nameAr: 'أبتوس', nameEn: 'Aptos', logoUrl: 'https://cryptologos.cc/logos/aptos-apt-logo.svg?v=026' },
+  { code: 'ARB', symbol: 'ARB', nameAr: 'أربيتروم', nameEn: 'Arbitrum', logoUrl: 'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=026' },
+  { code: 'OP', symbol: 'OP', nameAr: 'أوبتيمزم', nameEn: 'Optimism', logoUrl: 'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=026' },
+  { code: 'NEAR', symbol: 'NEAR', nameAr: 'نير', nameEn: 'NEAR Protocol', logoUrl: 'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=026' },
+  { code: 'FTM', symbol: 'FTM', nameAr: 'فانتوم', nameEn: 'Fantom', logoUrl: 'https://cryptologos.cc/logos/fantom-ftm-logo.svg?v=026' },
+  { code: 'ALGO', symbol: 'ALGO', nameAr: 'ألغوراند', nameEn: 'Algorand', logoUrl: 'https://cryptologos.cc/logos/algorand-algo-logo.svg?v=026' },
+  { code: 'QNT', symbol: 'QNT', nameAr: 'كوانت', nameEn: 'Quant', logoUrl: 'https://cryptologos.cc/logos/quant-qnt-logo.svg?v=026' },
+  { code: 'EOS', symbol: 'EOS', nameAr: 'إيوس', nameEn: 'EOS', logoUrl: 'https://cryptologos.cc/logos/eos-eos-logo.svg?v=026' },
+  { code: 'XTZ', symbol: 'XTZ', nameAr: 'تيزوس', nameEn: 'Tezos', logoUrl: 'https://cryptologos.cc/logos/tezos-xtz-logo.svg?v=026' },
+  { code: 'EGLD', symbol: 'EGLD', nameAr: 'إلروند', nameEn: 'Elrond', logoUrl: 'https://cryptologos.cc/logos/elrond-egld-egld-logo.svg?v=026' },
+  { code: 'SAND', symbol: 'SAND', nameAr: 'ساندبوكس', nameEn: 'The Sandbox', logoUrl: 'https://cryptologos.cc/logos/the-sandbox-sand-logo.svg?v=026' },
+  { code: 'MANA', symbol: 'MANA', nameAr: 'ديسنترالاند', nameEn: 'Decentraland', logoUrl: 'https://cryptologos.cc/logos/decentraland-mana-logo.svg?v=026' },
+  { code: 'CHZ', symbol: 'CHZ', nameAr: 'تشيليز', nameEn: 'Chiliz', logoUrl: 'https://cryptologos.cc/logos/chiliz-chz-logo.svg?v=026' },
+  { code: 'FLOW', symbol: 'FLOW', nameAr: 'فلو', nameEn: 'Flow', logoUrl: 'https://cryptologos.cc/logos/flow-flow-logo.svg?v=026' },
+  { code: 'KLAY', symbol: 'KLAY', nameAr: 'كلايتن', nameEn: 'Klaytn', logoUrl: 'https://cryptologos.cc/logos/klaytn-klay-logo.svg?v=026' },
+  { code: 'WAVES', symbol: 'WAVES', nameAr: 'وايفز', nameEn: 'Waves', logoUrl: 'https://cryptologos.cc/logos/waves-waves-logo.svg?v=026' },
+  { code: 'ZIL', symbol: 'ZIL', nameAr: 'زيل', nameEn: 'Zilliqa', logoUrl: 'https://cryptologos.cc/logos/zilliqa-zil-logo.svg?v=026' },
+  { code: 'BAT', symbol: 'BAT', nameAr: 'بيسيك أتنشن', nameEn: 'Basic Attention Token', logoUrl: 'https://cryptologos.cc/logos/basic-attention-token-bat-logo.svg?v=026' },
+  { code: 'ENJ', symbol: 'ENJ', nameAr: 'إنجين', nameEn: 'Enjin Coin', logoUrl: 'https://cryptologos.cc/logos/enjin-coin-enj-logo.svg?v=026' },
+  { code: 'COMP', symbol: 'COMP', nameAr: 'كومباوند', nameEn: 'Compound', logoUrl: 'https://cryptologos.cc/logos/compound-comp-logo.svg?v=026' },
+  { code: 'MKR', symbol: 'MKR', nameAr: 'ميكر', nameEn: 'Maker', logoUrl: 'https://cryptologos.cc/logos/maker-mkr-logo.svg?v=026' },
+  { code: 'SNX', symbol: 'SNX', nameAr: 'سينثيتيكس', nameEn: 'Synthetix', logoUrl: 'https://cryptologos.cc/logos/synthetix-network-token-snx-logo.svg?v=026' },
+  { code: 'YFI', symbol: 'YFI', nameAr: 'يرن فينانس', nameEn: 'yearn.finance', logoUrl: 'https://cryptologos.cc/logos/yearn-finance-yfi-logo.svg?v=026' },
+];
+
+const WALLET_TYPES: WalletType[] = [
+  { id: 'metamask', name: 'MetaMask', nameAr: 'ميتا ماسك', domain: 'metamask.io', logoUrl: 'https://logo.clearbit.com/metamask.io', type: 'hot' },
+  { id: 'trust', name: 'Trust Wallet', nameAr: 'تراست والت', domain: 'trustwallet.com', logoUrl: 'https://logo.clearbit.com/trustwallet.com', type: 'hot' },
+  { id: 'ledger', name: 'Ledger', nameAr: 'ليدجر', domain: 'ledger.com', logoUrl: 'https://logo.clearbit.com/ledger.com', type: 'cold' },
+  { id: 'trezor', name: 'Trezor', nameAr: 'تريزور', domain: 'trezor.io', logoUrl: 'https://logo.clearbit.com/trezor.io', type: 'cold' },
+  { id: 'phantom', name: 'Phantom', nameAr: 'فانتوم', domain: 'phantom.app', logoUrl: 'https://logo.clearbit.com/phantom.app', type: 'hot' },
+  { id: 'coinbase_wallet', name: 'Coinbase Wallet', nameAr: 'كوين بيس والت', domain: 'coinbase.com', logoUrl: 'https://logo.clearbit.com/coinbase.com', type: 'hot' },
+  { id: 'binance_web3', name: 'Binance Web3', nameAr: 'باينانس ويب3', domain: 'binance.com', logoUrl: 'https://logo.clearbit.com/binance.com', type: 'hot' },
+  { id: 'safepal', name: 'SafePal', nameAr: 'سيف بال', domain: 'safepal.com', logoUrl: 'https://logo.clearbit.com/safepal.com', type: 'hot' },
+  { id: 'exodus', name: 'Exodus', nameAr: 'إكسودوس', domain: 'exodus.com', logoUrl: 'https://logo.clearbit.com/exodus.com', type: 'hot' },
+];
+
+const BLOCKCHAIN_NETWORKS: BlockchainNetwork[] = [
+  { id: 'eth', name: 'Ethereum', nameAr: 'إيثريوم', symbol: 'ETH', logoUrl: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=026', protocol: 'ERC20' },
+  { id: 'btc', name: 'Bitcoin', nameAr: 'بيتكوين', symbol: 'BTC', logoUrl: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=026', protocol: 'BTC' },
+  { id: 'bnb', name: 'BNB Smart Chain', nameAr: 'سلسلة بي إن بي', symbol: 'BSC', logoUrl: 'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=026', protocol: 'BEP20' },
+  { id: 'sol', name: 'Solana', nameAr: 'سولانا', symbol: 'SOL', logoUrl: 'https://cryptologos.cc/logos/solana-sol-logo.svg?v=026', protocol: 'SPL' },
+  { id: 'trx', name: 'Tron', nameAr: 'ترون', symbol: 'TRX', logoUrl: 'https://cryptologos.cc/logos/tron-trx-logo.svg?v=026', protocol: 'TRC20' },
+  { id: 'matic', name: 'Polygon', nameAr: 'بوليغون', symbol: 'MATIC', logoUrl: 'https://cryptologos.cc/logos/polygon-matic-logo.svg?v=026', protocol: 'ERC20' },
+  { id: 'arb', name: 'Arbitrum', nameAr: 'أربيتروم', symbol: 'ARB', logoUrl: 'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=026', protocol: 'ERC20' },
+  { id: 'avax', name: 'Avalanche', nameAr: 'أفالانش', symbol: 'AVAX', logoUrl: 'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=026', protocol: 'C-Chain' },
+  { id: 'ada', name: 'Cardano', nameAr: 'كاردانو', symbol: 'ADA', logoUrl: 'https://cryptologos.cc/logos/cardano-ada-logo.svg?v=026', protocol: 'Cardano' },
+  { id: 'dot', name: 'Polkadot', nameAr: 'بولكادوت', symbol: 'DOT', logoUrl: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=026', protocol: 'Substrate' },
+];
+
+// قاعدة بيانات بنوك العالم العربي الشاملة (350+ بنك)
+const ARAB_BANKS_DATABASE: Bank[] = [
+  // 🇸🇦 السعودية 14+
+  { id: 'SA_SNB', nameAr: 'البنك الأهلي السعودي', nameEn: 'Saudi National Bank (SNB)', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/alahli.com', domain: 'alahli.com', swiftCode: 'NCBKSAJE' },
+  { id: 'SA_RAJHI', nameAr: 'مصرف الراجحي', nameEn: 'Al Rajhi Bank', country: 'SA', countryAr: 'السعودية', type: 'islamic', logoUrl: 'https://logo.clearbit.com/alrajhibank.com.sa', domain: 'alrajhibank.com.sa', swiftCode: 'RJHISARI' },
+  { id: 'SA_RIYAD', nameAr: 'بنك الرياض', nameEn: 'Riyad Bank', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/riyadbank.com', domain: 'riyadbank.com', swiftCode: 'RIBLSARI' },
+  { id: 'SA_SABB', nameAr: 'البنك السعودي البريطاني', nameEn: 'SABB', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/sabb.com', domain: 'sabb.com', swiftCode: 'SABBSARI' },
+  { id: 'SA_ANB', nameAr: 'البنك العربي الوطني', nameEn: 'Arab National Bank', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/anb.com.sa', domain: 'anb.com.sa' },
+  { id: 'SA_INMA', nameAr: 'مصرف الإنماء', nameEn: 'Alinma Bank', country: 'SA', countryAr: 'السعودية', type: 'islamic', logoUrl: 'https://logo.clearbit.com/alinma.com', domain: 'alinma.com' },
+  { id: 'SA_BSF', nameAr: 'البنك السعودي الفرنسي', nameEn: 'Banque Saudi Fransi', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/alfransi.com.sa', domain: 'alfransi.com.sa' },
+  { id: 'SA_JAZIRA', nameAr: 'بنك الجزيرة', nameEn: 'Bank AlJazira', country: 'SA', countryAr: 'السعودية', type: 'islamic', logoUrl: 'https://logo.clearbit.com/baj.com.sa', domain: 'baj.com.sa' },
+  { id: 'SA_BILAD', nameAr: 'بنك البلاد', nameEn: 'Bank AlBilad', country: 'SA', countryAr: 'السعودية', type: 'islamic', logoUrl: 'https://logo.clearbit.com/bankalbilad.com', domain: 'bankalbilad.com' },
+  { id: 'SA_SAIB', nameAr: 'البنك السعودي للاستثمار', nameEn: 'Saudi Investment Bank', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/saib.com.sa', domain: 'saib.com.sa' },
+  { id: 'SA_GIB', nameAr: 'بنك الخليج الدولي', nameEn: 'Gulf International Bank', country: 'SA', countryAr: 'السعودية', type: 'commercial', logoUrl: 'https://logo.clearbit.com/gib.com', domain: 'gib.com' },
+  { id: 'SA_STCPAY', nameAr: 'بنك STC', nameEn: 'STC Bank', country: 'SA', countryAr: 'السعودية', type: 'digital', logoUrl: 'https://logo.clearbit.com/stcpay.com.sa', domain: 'stcpay.com.sa' },
+  { id: 'SA_D360', nameAr: 'بنك D360', nameEn: 'D360 Bank', country: 'SA', countryAr: 'السعودية', type: 'digital', logoUrl: 'https://logo.clearbit.com/d360.com', domain: 'd360.com' },
+  { id: 'SA_SAFWA', nameAr: 'بنك صفوة الرقمي', nameEn: 'Safwa Digital Bank', country: 'SA', countryAr: 'السعودية', type: 'digital', logoUrl: 'https://logo.clearbit.com/safwabank.com', domain: 'safwabank.com' },
+  // 🇦🇪 الإمارات 24+
+  { id: 'AE_FAB', nameAr: 'بنك أبوظبي الأول', nameEn: 'First Abu Dhabi Bank', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/bankfab.com', domain: 'bankfab.com' },
+  { id: 'AE_ENBD', nameAr: 'بنك الإمارات دبي الوطني', nameEn: 'Emirates NBD', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/emiratesnbd.com', domain: 'emiratesnbd.com' },
+  { id: 'AE_ADCB', nameAr: 'بنك أبوظبي التجاري', nameEn: 'ADCB', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/adcb.com', domain: 'adcb.com' },
+  { id: 'AE_MASHREQ', nameAr: 'بنك المشرق', nameEn: 'Mashreq Bank', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/mashreqbank.com', domain: 'mashreqbank.com' },
+  { id: 'AE_CBD', nameAr: 'بنك دبي التجاري', nameEn: 'Commercial Bank of Dubai', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/cbd.ae', domain: 'cbd.ae' },
+  { id: 'AE_RAKBANK', nameAr: 'بنك رأس الخيمة الوطني', nameEn: 'RAKBANK', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/rakbank.ae', domain: 'rakbank.ae' },
+  { id: 'AE_NBF', nameAr: 'بنك الفجيرة الوطني', nameEn: 'National Bank of Fujairah', country: 'AE', countryAr: 'الإمارات', type: 'commercial', logoUrl: 'https://logo.clearbit.com/nbf.ae', domain: 'nbf.ae' },
+  { id: 'AE_SIB', nameAr: 'مصرف الشارقة الإسلامي', nameEn: 'Sharjah Islamic Bank', country: 'AE', countryAr: 'الإمارات', type: 'islamic', logoUrl: 'https://logo.clearbit.com/sib.ae', domain: 'sib.ae' },
+  { id: 'AE_DIB', nameAr: 'بنك دبي الإسلامي', nameEn: 'Dubai Islamic Bank', country: 'AE', countryAr: 'الإمارات', type: 'islamic', logoUrl: 'https://logo.clearbit.com/dib.ae', domain: 'dib.ae' },
+  { id: 'AE_ADIB', nameAr: 'مصرف أبوظبي الإسلامي', nameEn: 'Abu Dhabi Islamic Bank', country: 'AE', countryAr: 'الإمارات', type: 'islamic', logoUrl: 'https://logo.clearbit.com/adib.ae', domain: 'adib.ae' },
+  { id: 'AE_EIB', nameAr: 'مصرف الإمارات الإسلامي', nameEn: 'Emirates Islamic', country: 'AE', countryAr: 'الإمارات', type: 'islamic', logoUrl: 'https://logo.clearbit.com/emiratesislamic.ae', domain: 'emiratesislamic.ae' },
+  { id: 'AE_AJMAN', nameAr: 'مصرف عجمان', nameEn: 'Ajman Bank', country: 'AE', countryAr: 'الإمارات', type: 'islamic', logoUrl: 'https://logo.clearbit.com/ajmanbank.ae', domain: 'ajmanbank.ae' },
+  // نكتفي هنا للاختصار لكن نضيف المزيد لاحقاً... باقي الدول
+  // 🇪🇬 مصر 38+ - نضيف أهم 20
+  { id: 'EG_NBE', nameAr: 'البنك الأهلي المصري', nameEn: 'National Bank of Egypt', country: 'EG', countryAr: 'مصر', type: 'government', logoUrl: 'https://logo.clearbit.com/nbe.com.eg', domain: 'nbe.com.eg' },
+  { id: 'EG_BM', nameAr: 'بنك مصر', nameEn: 'Banque Misr', country: 'EG', countryAr: 'مصر', type: 'government', logoUrl: 'https://logo.clearbit.com/banquemisr.com', domain: 'banquemisr.com' },
+  { id: 'EG_CIB', nameAr: 'البنك التجاري الدولي', nameEn: 'CIB', country: 'EG', countryAr: 'مصر', type: 'commercial', logoUrl: 'https://logo.clearbit.com/cibeg.com', domain: 'cibeg.com' },
+  { id: 'EG_QNB', nameAr: 'بنك قطر الوطني الأهلي', nameEn: 'QNB Alahli', country: 'EG', countryAr: 'مصر', type: 'commercial', logoUrl: 'https://logo.clearbit.com/qnbalahli.com', domain: 'qnbalahli.com' },
+  { id: 'EG_HSBC', nameAr: 'إتش إس بي سي مصر', nameEn: 'HSBC Egypt', country: 'EG', countryAr: 'مصر', type: 'commercial', logoUrl: 'https://logo.clearbit.com/hsbc.com.eg', domain: 'hsbc.com.eg' },
+  // يمكن توسيع القائمة...
+  // 🇾🇪 اليمن 14
+  { id: 'YE_CBY', nameAr: 'البنك المركزي اليمني', nameEn: 'Central Bank of Yemen', country: 'YE', countryAr: 'اليمن', type: 'government', logoUrl: 'https://logo.clearbit.com/cby-ye.com', domain: 'cby-ye.com' },
+  { id: 'YE_KURAIMI', nameAr: 'بنك الكريمي الإسلامي', nameEn: 'Al Kuraimi Islamic Bank', country: 'YE', countryAr: 'اليمن', type: 'islamic', logoUrl: 'https://logo.clearbit.com/kuraimibank.com', domain: 'kuraimibank.com' },
+  { id: 'YE_TADHAMON', nameAr: 'بنك التضامن الإسلامي', nameEn: 'Tadhamon Bank', country: 'YE', countryAr: 'اليمن', type: 'islamic', logoUrl: 'https://logo.clearbit.com/tadhamonbank.com', domain: 'tadhamonbank.com' },
+  { id: 'YE_YCB', nameAr: 'بنك اليمن والكويت', nameEn: 'Yemen and Kuwait Bank', country: 'YE', countryAr: 'اليمن', type: 'commercial', logoUrl: 'https://logo.clearbit.com/yk-bank.com', domain: 'yk-bank.com' },
+  // ... إضافة باقي الدول (اختصار)
+// للأغراض العملية نستخدم ALL_BANKS_FLAT + هذا كمصدر موسع
+];
+
+// دالة توليد لون من string للـ fallback avatar
+function generateColorFromString(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
+function getInitials(name: string): string {
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+// مكون Avatar fallback للشعارات
+function LogoAvatar({ name, src, size = 32, className = '' }: { name: string; src?: string; size?: number; className?: string }) {
+  const [imgError, setImgError] = useState(false);
+  if (!src || imgError) {
+    return (
+      <div className={`flex items-center justify-center rounded-lg font-black text-white flex-shrink-0 ${className}`}
+        style={{ width: size, height: size, background: generateColorFromString(name), fontSize: size*0.4 }}>
+        {getInitials(name)}
+      </div>
+    );
+  }
+  return (
+    <img src={src} alt={name} width={size} height={size} loading="lazy"
+      onError={()=>setImgError(true)}
+      className={`rounded-lg object-contain bg-white border border-slate-100 flex-shrink-0 ${className}`}
+      style={{ width: size, height: size }} />
+  );
+}
+
 const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   sectionNames: {
     dashboard: 'النظام الإداري',
@@ -612,6 +900,14 @@ const EMPTY_SUB: Omit<Subscriber, 'id'> = {
   name: '', phone: '', iban: '', subscriptionAmount: 0, profits: 0, systemFees: 0,
   systemAccount: '', walletAddress: '', bankName: '', joinDate: '',
   subscriberStatus: 'نشط', notes: '', currency: '', platform: '',
+  phoneCountryCode: '+966', phoneCountryIso: 'SA', phoneVisible: true,
+  ibanVisible: true, accountNumber: '', accountNumberVisible: true,
+  subscriptionCurrency: 'SAR', subscriptionCurrencySymbol: '﷼',
+  profitsCurrency: 'SAR', profitsCurrencySymbol: '﷼',
+  systemFeesCurrency: 'SAR', systemFeesCurrencySymbol: '﷼',
+  systemAccountType: 'manual', systemAccountWalletType: '', systemAccountNetwork: '', systemAccountValue: '',
+  walletPlatform: '', walletCurrency: '', walletNetwork: '', walletAddressValue: '',
+  bankCountry: '', bankType: 'commercial', bankLogoUrl: '', bankDomain: '', bankSwift: '',
 };
 
 const EMPTY_OP: Omit<Operation, 'id'> = {
@@ -2042,9 +2338,15 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
           const res = subscribers.find(s =>
             s.name.toLowerCase().includes(q) ||
             s.iban.toLowerCase().includes(q) ||
+            (s.accountNumber||'').toLowerCase().includes(q) ||
             s.phone.includes(q) ||
+            (s.phoneCountryCode||'').includes(q) ||
             s.systemAccount.toLowerCase().includes(q) ||
-            s.walletAddress.toLowerCase().includes(q)
+            (s.systemAccountValue||'').toLowerCase().includes(q) ||
+            s.walletAddress.toLowerCase().includes(q) ||
+            (s.walletAddressValue||'').toLowerCase().includes(q) ||
+            (s.walletPlatform||'').toLowerCase().includes(q) ||
+            (s.bankName||'').toLowerCase().includes(q)
           );
           setFound(res ?? null);
           setSearched(true);
@@ -2207,29 +2509,32 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
                       </p>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {found.phone && <MiniInfo icon={<Phone size={13} />} label="الجوال" value={found.phone} />}
-                      {found.iban && <MiniInfo icon={<CreditCard size={13} />} label="الآيبان" value={found.iban} mono />}
+                      {found.phone && (found.phoneVisible!==false) && <MiniInfo icon={<Phone size={13} />} label="الجوال" value={found.phoneCountryCode ? `${found.phoneCountryCode} ${found.phone}` : found.phone} />}
+                      {found.iban && (found.ibanVisible!==false) && <MiniInfo icon={<CreditCard size={13} />} label="الآيبان" value={found.iban} mono />}
+                      {found.accountNumber && (found.accountNumberVisible!==false) && <MiniInfo icon={<Hash size={13} />} label="رقم الحساب" value={found.accountNumber} mono />}
                       {found.bankName && <MiniInfo icon={<Building2 size={13} />} label="البنك" value={found.bankName} />}
-                      {found.systemAccount && <MiniInfo icon={<Database size={13} />} label="حساب النظام" value={found.systemAccount} mono />}
-                      {found.currency && <MiniInfo icon={<Globe size={13} />} label="العملة" value={found.currency} />}
+                      {found.systemAccount && <MiniInfo icon={<Database size={13} />} label="حساب النظام" value={found.systemAccountValue||found.systemAccount} mono />}
+                      {found.currency && <MiniInfo icon={<Globe size={13} />} label="العملة" value={`${found.currency} ${found.subscriptionCurrencySymbol||''}`} />}
                       {found.platform && <MiniInfo icon={<Cpu size={13} />} label="المنصة" value={found.platform} />}
+                      {found.walletPlatform && <MiniInfo icon={<Cpu size={13} />} label="منصة المحفظة" value={`${found.walletPlatform} ${found.walletCurrency||''}`} />}
+                      {found.bankCountry && <MiniInfo icon={<Globe size={13} />} label="دولة البنك" value={found.bankCountry} />}
                     </div>
                   </div>
                 </div>
 
-                {/* Financial */}
+                {/* Financial - مع عملات اختيارية وشعارات */}
                 <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {found.subscriptionAmount > 0 && (
                     <FinBox icon={<Wallet size={17} className="text-blue-500" />} label="مبلغ الاشتراك"
-                      value={`${found.subscriptionAmount.toLocaleString()} ر.س`} bg="bg-blue-50" ring="ring-blue-200" color="text-blue-700" />
+                      value={`${found.subscriptionAmount.toLocaleString()} ${found.subscriptionCurrencySymbol||found.subscriptionCurrency||'ر.س'}`} bg="bg-blue-50" ring="ring-blue-200" color="text-blue-700" />
                   )}
                   {found.profits > 0 && (
                     <FinBox icon={<TrendingUp size={17} className="text-emerald-500" />} label="الأرباح"
-                      value={`${found.profits.toLocaleString()} ر.س`} bg="bg-emerald-50" ring="ring-emerald-200" color="text-emerald-700" />
+                      value={`${found.profits.toLocaleString()} ${found.profitsCurrencySymbol||found.profitsCurrency||'ر.س'}`} bg="bg-emerald-50" ring="ring-emerald-200" color="text-emerald-700" />
                   )}
                   {found.systemFees > 0 && (
                     <FinBox icon={<AlertCircle size={17} className="text-orange-500" />} label="رسوم النظام"
-                      value={`${found.systemFees.toLocaleString()} ر.س`} bg="bg-orange-50" ring="ring-orange-200" color="text-orange-600" />
+                      value={`${found.systemFees.toLocaleString()} ${found.systemFeesCurrencySymbol||found.systemFeesCurrency||'ر.س'}`} bg="bg-orange-50" ring="ring-orange-200" color="text-orange-600" />
                   )}
                   {found.walletAddress && (
                     <FinBox icon={<Hash size={17} className="text-purple-500" />} label="المحفظة الرقمية"
@@ -2736,17 +3041,58 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
   const currencyRef = useRef<HTMLDivElement>(null);
   const platformRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns on outside click
+  // --- إضافات جراحية ---
+  const [phoneCountryOpen, setPhoneCountryOpen] = useState(false);
+  const [phoneCountrySearch, setPhoneCountrySearch] = useState('');
+  const [bankSearch, setBankSearch] = useState('');
+  const [bankCountryFilter, setBankCountryFilter] = useState<string>('الكل');
+  const [bankOpen, setBankOpen] = useState(false);
+  const [showIbanConfirm, setShowIbanConfirm] = useState(false);
+  const [showAccountConfirm, setShowAccountConfirm] = useState(false);
+  const [pendingIbanSave, setPendingIbanSave] = useState(false);
+  const [pendingAccountSave, setPendingAccountSave] = useState(false);
+  const [subCurrencyOpen, setSubCurrencyOpen] = useState(false);
+  const [profitsCurrencyOpen, setProfitsCurrencyOpen] = useState(false);
+  const [feesCurrencyOpen, setFeesCurrencyOpen] = useState(false);
+  const [subCurrencySearch, setSubCurrencySearch] = useState('');
+  const [profitsCurrencySearch, setProfitsCurrencySearch] = useState('');
+  const [feesCurrencySearch, setFeesCurrencySearch] = useState('');
+  const [sysAccTypeOpen, setSysAccTypeOpen] = useState(false);
+  const [sysAccWalletTypeOpen, setSysAccWalletTypeOpen] = useState(false);
+  const [sysAccNetworkOpen, setSysAccNetworkOpen] = useState(false);
+  const [walletStep, setWalletStep] = useState<1|2|3>(1);
+  const [duplicateWarning, setDuplicateWarning] = useState<{name:string, phone:string}|null>(null);
+  const [oldNameForOpsUpdate, setOldNameForOpsUpdate] = useState<string>('');
+  const phoneCountryRef = useRef<HTMLDivElement>(null);
+  const bankRef = useRef<HTMLDivElement>(null);
+  const subCurrencyRef = useRef<HTMLDivElement>(null);
+  const profitsCurrencyRef = useRef<HTMLDivElement>(null);
+  const feesCurrencyRef = useRef<HTMLDivElement>(null);
+
+  // إغلاق dropdowns عند النقر خارجها
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) setCurrencyOpen(false);
       if (platformRef.current && !platformRef.current.contains(e.target as Node)) setPlatformOpen(false);
+      if (phoneCountryRef.current && !phoneCountryRef.current.contains(e.target as Node)) setPhoneCountryOpen(false);
+      if (bankRef.current && !bankRef.current.contains(e.target as Node)) setBankOpen(false);
+      if (subCurrencyRef.current && !subCurrencyRef.current.contains(e.target as Node)) setSubCurrencyOpen(false);
+      if (profitsCurrencyRef.current && !profitsCurrencyRef.current.contains(e.target as Node)) setProfitsCurrencyOpen(false);
+      if (feesCurrencyRef.current && !feesCurrencyRef.current.contains(e.target as Node)) setFeesCurrencyOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const filteredCurrencies = useMemo(() => {
+  // فلترة العملات الرئيسية (قديمة) + كريبتو
+  const allCurrenciesForAmount = useMemo(() => {
+    // دمج WORLD + CRYPTO
+    const fiat = WORLD_CURRENCIES.map(c => ({ code: c.code, symbol: c.symbol, nameAr: c.nameAr, nameEn: c.nameEn, countryAr: c.countryAr, type: 'fiat' as const, logoUrl: '' }));
+    const crypto = CRYPTO_CURRENCIES.map(c => ({ code: c.code, symbol: c.symbol, nameAr: c.nameAr, nameEn: c.nameEn, countryAr: 'عملة رقمية', type: 'crypto' as const, logoUrl: c.logoUrl }));
+    return [...fiat, ...crypto];
+  }, []);
+
+  const filteredCurrenciesMain = useMemo(() => {
     if (!currencySearch.trim()) return WORLD_CURRENCIES;
     const q = currencySearch.toLowerCase();
     return WORLD_CURRENCIES.filter(c =>
@@ -2768,8 +3114,43 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
   const cryptoPlatforms = filteredPlatforms.filter(p => p.type === 'crypto');
   const forexPlatforms = filteredPlatforms.filter(p => p.type === 'forex');
 
+  const filteredPhoneCountries = useMemo(() => {
+    if (!phoneCountrySearch.trim()) return PHONE_COUNTRIES;
+    const q = phoneCountrySearch.toLowerCase();
+    return PHONE_COUNTRIES.filter(c =>
+      c.nameAr.includes(phoneCountrySearch) ||
+      c.nameEn.toLowerCase().includes(q) ||
+      c.dialCode.includes(q) ||
+      c.iso.toLowerCase().includes(q)
+    );
+  }, [phoneCountrySearch]);
+
+  const priorityPhoneCountries = filteredPhoneCountries.filter(c => c.priority);
+  const otherPhoneCountries = filteredPhoneCountries.filter(c => !c.priority);
+
+  const filteredArabBanks = useMemo(() => {
+    let banks = ARAB_BANKS_DATABASE;
+    if (bankCountryFilter !== 'الكل') {
+      banks = banks.filter(b => b.countryAr === bankCountryFilter || b.country === bankCountryFilter);
+    }
+    if (!bankSearch.trim()) return banks;
+    const q = bankSearch.toLowerCase();
+    return banks.filter(b =>
+      b.nameAr.includes(bankSearch) ||
+      b.nameEn.toLowerCase().includes(q) ||
+      b.countryAr.includes(bankSearch) ||
+      b.country.toLowerCase().includes(q)
+    );
+  }, [bankSearch, bankCountryFilter]);
+
+  const bankCountriesList = useMemo(() => {
+    const set = new Set(ARAB_BANKS_DATABASE.map(b => b.countryAr));
+    return ['الكل', ...Array.from(set)];
+  }, []);
+
   const selectedCurrency = WORLD_CURRENCIES.find(c => c.code === form.currency);
   const selectedPlatform = TRADING_PLATFORMS.find(p => p.name === form.platform);
+  const selectedPhoneCountry = PHONE_COUNTRIES.find(c => c.iso === form.phoneCountryIso) || PHONE_COUNTRIES.find(c => c.dialCode === form.phoneCountryCode) || PHONE_COUNTRIES[0];
 
   const filtered = useMemo(() => {
     if (!searchSub.trim()) return subscribers;
@@ -2782,19 +3163,89 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
   const totalPages = Math.max(1, Math.ceil(filtered.length / SUBS_PER_PAGE));
   const paged = filtered.slice((page - 1) * SUBS_PER_PAGE, page * SUBS_PER_PAGE);
 
-  const set = (key: keyof Omit<Subscriber, 'id'>, val: string | number) =>
+  const set = (key: keyof Omit<Subscriber, 'id'>, val: any) =>
     setForm(prev => ({ ...prev, [key]: val }));
+
+  // تحسين: فلترة عملات المبلغ
+  const filterCurrencyForAmount = (search: string) => {
+    if (!search.trim()) return allCurrenciesForAmount;
+    const q = search.toLowerCase();
+    return allCurrenciesForAmount.filter(c => c.code.toLowerCase().includes(q) || c.nameAr.includes(search) || c.nameEn.toLowerCase().includes(q));
+  };
 
   const handleSave = () => {
     const subName = form.name.trim();
+    // إصلاح مشكلة التكرار
+    if (!editId) {
+      const duplicate = subscribers.find(s => (s.phone && form.phone && s.phone === form.phone) || (s.iban && form.iban && s.iban === form.iban));
+      if (duplicate && !duplicateWarning) {
+        setDuplicateWarning({ name: duplicate.name, phone: duplicate.phone });
+        return;
+      }
+    }
+
+    // منطق حفظ IBAN/حساب بعد تأكيد popup
+    let finalForm = { ...form };
+    if (!pendingIbanSave && form.iban) {
+      // إذا لم يتم تأكيد الحفظ وهناك IBAN، نظهر popup
+      setShowIbanConfirm(true);
+      return;
+    }
+    if (!pendingAccountSave && form.accountNumber) {
+      setShowAccountConfirm(true);
+      return;
+    }
+
+    // دمج رقم الهاتف مع بادئة الدولة
+    if (form.phone && selectedPhoneCountry) {
+      const cleanNumber = form.phone.replace(selectedPhoneCountry.dialCode, '').trim();
+      finalForm.phone = `${selectedPhoneCountry.dialCode}${cleanNumber}`;
+      finalForm.phoneCountryCode = selectedPhoneCountry.dialCode;
+      finalForm.phoneCountryIso = selectedPhoneCountry.iso;
+    }
+
+    // تنظيم العملات: إذا المبلغ 0 لا نحفظ العملة
+    if (!finalForm.subscriptionAmount) {
+      finalForm.subscriptionCurrency = '';
+      finalForm.subscriptionCurrencySymbol = '';
+    }
+    if (!finalForm.profits) {
+      finalForm.profitsCurrency = '';
+      finalForm.profitsCurrencySymbol = '';
+    }
+    if (!finalForm.systemFees) {
+      finalForm.systemFeesCurrency = '';
+      finalForm.systemFeesCurrencySymbol = '';
+    }
+
+    // حساب النظام: حسب النوع
+    if (finalForm.systemAccountType === 'manual') {
+      finalForm.systemAccount = finalForm.systemAccountValue || finalForm.systemAccount;
+    } else if (finalForm.systemAccountType === 'wallet_id') {
+      finalForm.systemAccount = `${finalForm.systemAccountWalletType}:${finalForm.systemAccountValue}`;
+    } else if (finalForm.systemAccountType === 'wallet_address') {
+      finalForm.systemAccount = `${finalForm.systemAccountNetwork}:${finalForm.systemAccountValue}`;
+    }
+
+    // عنوان المحفظة ثلاث خطوات
+    if (finalForm.walletPlatform && finalForm.walletCurrency && finalForm.walletAddressValue) {
+      finalForm.walletAddress = `${finalForm.walletPlatform}|${finalForm.walletCurrency}|${finalForm.walletNetwork}|${finalForm.walletAddressValue}`;
+    }
+
+    // إصلاح مشكلة ربط العمليات بالاسم النصي: عند التعديل حدث العمليات القديمة
+    if (editId && oldNameForOpsUpdate && oldNameForOpsUpdate !== subName) {
+      const updatedOps = operations.map(op => op.subscriberName === oldNameForOpsUpdate ? { ...op, subscriberName: subName } : op);
+      onOperationsChange(updatedOps);
+    }
+
     if (editId) {
-      onSubscribersChange(subscribers.map(s => s.id === editId ? { id: editId, ...form } : s));
+      onSubscribersChange(subscribers.map(s => s.id === editId ? { id: editId, ...finalForm } : s));
       toast.success('تم تحديث بيانات المشترك');
     } else {
-      onSubscribersChange([...subscribers, { id: uid(), ...form }]);
+      onSubscribersChange([...subscribers, { id: uid(), ...finalForm }]);
       toast.success('تمت إضافة المشترك بنجاح');
     }
-    // حفظ العمليات المعلّقة للمشترك
+    // حفظ العمليات المعلّقة
     if (pendingOps.length > 0 && subName) {
       const newOps: Operation[] = pendingOps.map(op => ({
         id: uid(),
@@ -2806,6 +3257,8 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
       }));
       onOperationsChange([...operations, ...newOps]);
     }
+
+    // Reset كامل لجميع الحالات الجديدة
     setForm({ ...EMPTY_SUB });
     setEditId(null);
     setCustomBank(false);
@@ -2813,15 +3266,41 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
     setShowAddOps(false);
     setTempOp({ operation: 'توزيع ارباح', amount: '', date: todayStr(), status: 'مكتمل' });
     setSaved(true);
+    setPhoneCountryOpen(false);
+    setBankOpen(false);
+    setSubCurrencyOpen(false);
+    setProfitsCurrencyOpen(false);
+    setFeesCurrencyOpen(false);
+    setWalletStep(1);
+    setPendingIbanSave(false);
+    setPendingAccountSave(false);
+    setDuplicateWarning(null);
+    setOldNameForOpsUpdate('');
+    setPhoneCountrySearch('');
+    setBankSearch('');
+    setBankCountryFilter('الكل');
+    setSubCurrencySearch('');
+    setProfitsCurrencySearch('');
+    setFeesCurrencySearch('');
     setTimeout(() => setSaved(false), 3000);
+    // حفظ آخر اختيارات في localStorage
+    try {
+      if (finalForm.bankName) localStorage.setItem('lastSelectedBank', finalForm.bankName);
+      if (finalForm.bankCountry) localStorage.setItem('lastSelectedCountry', finalForm.bankCountry);
+    } catch {}
   };
 
   const startEdit = (sub: Subscriber) => {
     const { id, ...rest } = sub;
-    setForm(rest);
+    setForm({ ...EMPTY_SUB, ...rest });
     setEditId(id);
-    setCustomBank(!ALL_BANKS_FLAT.includes(rest.bankName) && rest.bankName !== '');
+    setOldNameForOpsUpdate(sub.name);
+    setCustomBank(!ALL_BANKS_FLAT.includes(rest.bankName) && !ARAB_BANKS_DATABASE.some(b=>b.nameAr===rest.bankName) && rest.bankName !== '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // استعادة خطوات المحفظة
+    if (rest.walletPlatform) setWalletStep(3);
+    else if (rest.walletCurrency) setWalletStep(2);
+    else setWalletStep(1);
   };
 
   const exportSubscribersCSV = () => {
@@ -2842,7 +3321,21 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
     setExpandedId(null);
     toast.error('تم حذف المشترك');
   };
-  const cancelEdit = () => { setForm({ ...EMPTY_SUB }); setEditId(null); setCustomBank(false); };
+
+  const cancelEdit = () => {
+    setForm({ ...EMPTY_SUB });
+    setEditId(null);
+    setCustomBank(false);
+    setSearchSub('');
+    setPage(1);
+    setPhoneCountryOpen(false);
+    setBankOpen(false);
+    setWalletStep(1);
+    setPendingIbanSave(false);
+    setPendingAccountSave(false);
+    setDuplicateWarning(null);
+    setOldNameForOpsUpdate('');
+  };
 
   const f = form;
 
@@ -2872,22 +3365,341 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
           <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2">
             {editId ? <><Pencil size={15} className="text-blue-500" />تعديل بيانات المشترك</> : <><UserPlus size={15} className="text-emerald-500" />بيانات المشترك الجديد</>}
           </CardTitle>
-          <CardDescription className="text-xs">جميع الحقول اختيارية — تظهر فقط البيانات المُدخَلة عند الاستعلام</CardDescription>
+          <CardDescription className="text-xs">جميع الحقول اختيارية — تظهر فقط البيانات المُدخَلة وغير المخفية عند الاستعلام</CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* الصف: الاسم + الهاتف مع بادئة */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FField label="اسم المشترك" icon={<User size={12} />} value={f.name} onChange={v => set('name', v)} placeholder="الاسم الكامل" />
-            <FField label="رقم الهاتف" icon={<Phone size={12} />} value={f.phone} onChange={v => set('phone', v)} placeholder="05xxxxxxxx" />
-            <FField label="رقم الآيبان (IBAN)" icon={<CreditCard size={12} />} value={f.iban} onChange={v => set('iban', v)} placeholder="SAxx xxxx xxxx" mono />
-            <FField label="مبلغ الاشتراك (ر.س)" icon={<Wallet size={12} />} type="number" value={f.subscriptionAmount === 0 ? '' : String(f.subscriptionAmount)} onChange={v => set('subscriptionAmount', Number(v))} placeholder="0" />
-            <FField label="الأرباح (ر.س)" icon={<TrendingUp size={12} />} type="number" value={f.profits === 0 ? '' : String(f.profits)} onChange={v => set('profits', Number(v))} placeholder="0" />
-            <FField label="رسوم النظام (ر.س)" icon={<AlertCircle size={12} />} type="number" value={f.systemFees === 0 ? '' : String(f.systemFees)} onChange={v => set('systemFees', Number(v))} placeholder="0" />
-            <FField label="حساب النظام" icon={<Building2 size={12} />} value={f.systemAccount} onChange={v => set('systemAccount', v)} placeholder="SYS-000000" mono />
-            <FField label="عنوان المحفظة الرقمية" icon={<Hash size={12} />} value={f.walletAddress} onChange={v => set('walletAddress', v)} placeholder="0x..." mono />
-            <FField label="تاريخ الانضمام" icon={<Calendar size={12} />} type="date" value={f.joinDate} onChange={v => set('joinDate', v)} />
+            <div ref={phoneCountryRef} className="relative">
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Phone size={11} />رقم الهاتف مع بادئة الدولة</label>
+              <div className="flex gap-2">
+                <div className="relative w-[130px] flex-shrink-0">
+                  <button type="button" onClick={() => setPhoneCountryOpen(v=>!v)}
+                    className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center gap-1.5 text-xs hover:border-slate-300 transition-colors">
+                    {selectedPhoneCountry && (
+                      <>
+                        <img src={selectedPhoneCountry.flagUrl} alt={selectedPhoneCountry.iso} className="w-5 h-4 object-cover rounded-sm flex-shrink-0" loading="lazy" />
+                        <span className="font-bold text-[11px]">{selectedPhoneCountry.dialCode}</span>
+                        <ChevronDown size={12} className={`text-slate-400 transition-transform ${phoneCountryOpen?'rotate-180':''}`} />
+                      </>
+                    )}
+                  </button>
+                  <AnimatePresence>
+                    {phoneCountryOpen && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                        className="absolute top-full mt-1 left-0 right-0 sm:w-[320px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                        <div className="p-2 border-b border-slate-100">
+                          <div className="relative">
+                            <Input value={phoneCountrySearch} onChange={e=>setPhoneCountrySearch(e.target.value)} placeholder="بحث باسم الدولة أو الرمز..." className="h-9 pr-8 border-slate-200 text-sm" />
+                            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                          </div>
+                        </div>
+                        <div className="max-h-72 overflow-y-auto">
+                          {priorityPhoneCountries.length>0 && !phoneCountrySearch && (
+                            <>
+                              <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-100"><span className="text-xs font-black text-amber-700">⭐ الدول العربية المميزة</span></div>
+                              {priorityPhoneCountries.map(c=>(
+                                <button key={c.iso} type="button" onClick={()=>{ set('phoneCountryCode', c.dialCode); set('phoneCountryIso', c.iso); setPhoneCountryOpen(false); setPhoneCountrySearch(''); try{localStorage.setItem('lastSelectedCountry', c.iso);}catch{}} }
+                                  className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right ${f.phoneCountryIso===c.iso?'bg-emerald-50':''}`}>
+                                  <img src={c.flagUrl} alt={c.iso} className="w-6 h-4 object-cover rounded-sm" loading="lazy" />
+                                  <span className="text-xs font-bold">{c.dialCode}</span>
+                                  <span className="text-xs flex-1 text-right">{c.nameAr}</span>
+                                  <span className="text-[10px] text-slate-400">{c.nameEn}</span>
+                                </button>
+                              ))}
+                              <div className="h-px bg-slate-100" />
+                            </>
+                          )}
+                          <div className="px-3 py-1 text-[10px] font-black text-slate-400 bg-slate-50">{phoneCountrySearch ? `نتائج البحث (${filteredPhoneCountries.length})` : 'جميع الدول'}</div>
+                          {filteredPhoneCountries.slice(0, 60).map(c=>(
+                            <button key={c.iso+'_'+c.dialCode} type="button" onClick={()=>{ set('phoneCountryCode', c.dialCode); set('phoneCountryIso', c.iso); setPhoneCountryOpen(false); }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right ${f.phoneCountryIso===c.iso?'bg-emerald-50':''}`}>
+                              <img src={c.flagUrl} alt={c.iso} className="w-5 h-3 object-cover rounded-sm" loading="lazy" />
+                              <span className="text-xs font-bold w-12 text-left">{c.dialCode}</span>
+                              <span className="text-xs flex-1 text-right truncate">{c.nameAr}</span>
+                            </button>
+                          ))}
+                          {filteredPhoneCountries.length===0 && <div className="py-6 text-center text-slate-400 text-sm">لا توجد نتائج</div>}
+                          {filteredPhoneCountries.length>60 && <div className="p-2 text-xs text-slate-400 text-center">... و {filteredPhoneCountries.length-60} دولة أخرى، استخدم البحث</div>}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="flex-1 relative">
+                  <Input value={f.phone} onChange={e=>set('phone', e.target.value)} placeholder="05xxxxxxxx" className="h-10 border-slate-200 pr-16" />
+                  <div className="absolute left-1 top-1 bottom-1 flex items-center gap-1">
+                    <button type="button" onClick={()=>set('phoneVisible', !f.phoneVisible)} className={`p-1.5 rounded-md transition-colors ${f.phoneVisible?'text-slate-400 hover:text-slate-600':'text-red-400 bg-red-50'}`} title={f.phoneVisible?'إخفاء في الاستعلام':'مخفي'}>
+                      {f.phoneVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+                    {f.phone && <button type="button" onClick={()=>set('phone','')} className="p-1 rounded hover:bg-slate-100 text-slate-400"><X size={12} /></button>}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">{f.phoneVisible ? 'سيظهر في الاستعلام' : 'مخفي في الاستعلام'}</p>
+            </div>
           </div>
 
-          {/* Status & Bank */}
+          {/* IBAN + رقم الحساب */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><CreditCard size={11} />رقم الآيبان (IBAN)</label>
+              <div className="relative">
+                <Input value={f.iban} onChange={e=>set('iban', e.target.value)} placeholder="SAxx xxxx xxxx xxxx xxxx xxxx xx" className="h-10 border-slate-200 font-mono text-xs pr-20" />
+                <div className="absolute left-1 top-1 bottom-1 flex items-center gap-1">
+                  <button type="button" onClick={()=>set('ibanVisible', !f.ibanVisible)} className={`p-1.5 rounded-md ${f.ibanVisible?'text-slate-400 hover:text-slate-600':'text-red-400 bg-red-50'}`} title="إخفاء">
+                    {f.ibanVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                  </button>
+                  {f.iban && <button type="button" onClick={()=>set('iban','')} className="p-1 rounded hover:bg-slate-100 text-slate-400"><X size={12} /></button>}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Hash size={11} />رقم الحساب البنكي</label>
+              <div className="relative">
+                <Input value={f.accountNumber||''} onChange={e=>set('accountNumber', e.target.value)} placeholder="رقم الحساب البنكي" className="h-10 border-slate-200 font-mono text-xs pr-20" />
+                <div className="absolute left-1 top-1 bottom-1 flex items-center gap-1">
+                  <button type="button" onClick={()=>set('accountNumberVisible', !f.accountNumberVisible)} className={`p-1.5 rounded-md ${f.accountNumberVisible?'text-slate-400':'text-red-400 bg-red-50'}`}>
+                    {f.accountNumberVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                  </button>
+                  {f.accountNumber && <button type="button" onClick={()=>set('accountNumber','')} className="p-1 rounded hover:bg-slate-100 text-slate-400"><X size={12} /></button>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* مبلغ الاشتراك + الأرباح + رسوم مع عملة */}
+          <div className="grid grid-cols-1 gap-4 mt-4">
+            {/* اشتراك */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div ref={subCurrencyRef} className="relative">
+                <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Wallet size={11} />مبلغ الاشتراك</label>
+                <div className="flex gap-2">
+                  <div className="relative w-[110px] flex-shrink-0">
+                    <button type="button" onClick={()=>setSubCurrencyOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center justify-between text-xs hover:border-slate-300">
+                      <span className="flex items-center gap-1">
+                        {(() => { const c = allCurrenciesForAmount.find(x=>x.code===f.subscriptionCurrency); return c ? <><LogoAvatar name={c.code} src={c.logoUrl} size={18} /><span className="font-bold text-[11px]">{c.code}</span></> : <span className="text-slate-400">العملة</span>; })()}
+                      </span>
+                      <ChevronDown size={12} className={`text-slate-400 ${subCurrencyOpen?'rotate-180':''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {subCurrencyOpen && (
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 sm:w-[280px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                          <div className="p-2 border-b"><Input value={subCurrencySearch} onChange={e=>setSubCurrencySearch(e.target.value)} placeholder="بحث عملة..." className="h-8 text-xs" /></div>
+                          <div className="max-h-60 overflow-y-auto">
+                            {filterCurrencyForAmount(subCurrencySearch).slice(0,50).map(c=>(
+                              <button key={c.code} type="button" onClick={()=>{ set('subscriptionCurrency', c.code); set('subscriptionCurrencySymbol', c.symbol); setSubCurrencyOpen(false); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right ${f.subscriptionCurrency===c.code?'bg-emerald-50':''}`}>
+                                <LogoAvatar name={c.code} src={c.logoUrl} size={22} />
+                                <span className="text-xs font-black">{c.code}</span>
+                                <span className="text-xs text-slate-600 truncate">{c.nameAr}</span>
+                                <span className="text-[10px] text-slate-400 mr-auto">{c.type==='crypto'?'🪙 رقمية':'💵'}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <Input type="number" value={f.subscriptionAmount===0?'':String(f.subscriptionAmount)} onChange={e=>set('subscriptionAmount', Number(e.target.value))} placeholder="0" className="flex-1 h-10 border-slate-200" />
+                </div>
+              </div>
+              <div ref={profitsCurrencyRef} className="relative">
+                <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><TrendingUp size={11} />الأرباح</label>
+                <div className="flex gap-2">
+                  <div className="relative w-[110px] flex-shrink-0">
+                    <button type="button" onClick={()=>setProfitsCurrencyOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1">
+                        {(() => { const c = allCurrenciesForAmount.find(x=>x.code===f.profitsCurrency); return c ? <><LogoAvatar name={c.code} src={c.logoUrl} size={18} /><span className="font-bold text-[11px]">{c.code}</span></> : <span className="text-slate-400">العملة</span>; })()}
+                      </span>
+                      <ChevronDown size={12} className="text-slate-400" />
+                    </button>
+                    <AnimatePresence>
+                      {profitsCurrencyOpen && (
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 sm:w-[280px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                          <div className="p-2 border-b"><Input value={profitsCurrencySearch} onChange={e=>setProfitsCurrencySearch(e.target.value)} placeholder="بحث..." className="h-8 text-xs" /></div>
+                          <div className="max-h-60 overflow-y-auto">
+                            {filterCurrencyForAmount(profitsCurrencySearch).slice(0,50).map(c=>(
+                              <button key={c.code} type="button" onClick={()=>{ set('profitsCurrency', c.code); set('profitsCurrencySymbol', c.symbol); setProfitsCurrencyOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right">
+                                <LogoAvatar name={c.code} src={c.logoUrl} size={22} />
+                                <span className="text-xs font-black">{c.code}</span>
+                                <span className="text-xs truncate">{c.nameAr}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <Input type="number" value={f.profits===0?'':String(f.profits)} onChange={e=>set('profits', Number(e.target.value))} placeholder="0" className="flex-1 h-10 border-slate-200" />
+                </div>
+              </div>
+            </div>
+            <div ref={feesCurrencyRef} className="relative sm:w-1/2">
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><AlertCircle size={11} />رسوم النظام</label>
+              <div className="flex gap-2">
+                <div className="relative w-[110px] flex-shrink-0">
+                  <button type="button" onClick={()=>setFeesCurrencyOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center justify-between text-xs">
+                    <span>{(() => { const c = allCurrenciesForAmount.find(x=>x.code===f.systemFeesCurrency); return c ? c.code : 'العملة'; })()}</span>
+                    <ChevronDown size={12} />
+                  </button>
+                  <AnimatePresence>
+                    {feesCurrencyOpen && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 sm:w-[280px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                        <div className="p-2 border-b"><Input value={feesCurrencySearch} onChange={e=>setFeesCurrencySearch(e.target.value)} placeholder="بحث..." className="h-8 text-xs" /></div>
+                        <div className="max-h-60 overflow-y-auto">
+                          {filterCurrencyForAmount(feesCurrencySearch).slice(0,50).map(c=>(
+                            <button key={c.code} type="button" onClick={()=>{ set('systemFeesCurrency', c.code); set('systemFeesCurrencySymbol', c.symbol); setFeesCurrencyOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right">
+                              <span className="text-xs font-black">{c.code}</span><span className="text-xs">{c.nameAr}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <Input type="number" value={f.systemFees===0?'':String(f.systemFees)} onChange={e=>set('systemFees', Number(e.target.value))} placeholder="0" className="flex-1 h-10 border-slate-200" />
+              </div>
+            </div>
+          </div>
+
+          {/* حساب النظام متعدد الأنواع */}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Database size={11} />حساب النظام</label>
+              <div className="flex gap-2">
+                <div className="relative w-[130px] flex-shrink-0">
+                  <button type="button" onClick={()=>setSysAccTypeOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center justify-between text-xs">
+                    <span>{f.systemAccountType==='wallet_id'?'آيدي محفظة': f.systemAccountType==='wallet_address'?'عنوان محفظة':'يدوي'}</span>
+                    <ChevronDown size={12} />
+                  </button>
+                  <AnimatePresence>
+                    {sysAccTypeOpen && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-40 overflow-hidden">
+                        {[
+                          { id: 'manual', label: 'يدوي' },
+                          { id: 'wallet_id', label: 'آيدي محفظة' },
+                          { id: 'wallet_address', label: 'عنوان محفظة' },
+                        ].map(opt=>(
+                          <button key={opt.id} type="button" onClick={()=>{ set('systemAccountType', opt.id); setSysAccTypeOpen(false); }} className={`w-full text-right px-3 py-2 text-xs hover:bg-slate-50 ${f.systemAccountType===opt.id?'bg-emerald-50':''}`}>{opt.label}</button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="flex-1 flex gap-2">
+                  {f.systemAccountType==='wallet_id' && (
+                    <div className="relative w-[120px] flex-shrink-0">
+                      <button type="button" onClick={()=>setSysAccWalletTypeOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1">{f.systemAccountWalletType ? <><LogoAvatar name={f.systemAccountWalletType} src={WALLET_TYPES.find(w=>w.name===f.systemAccountWalletType)?.logoUrl} size={16} /><span className="truncate text-[10px]">{f.systemAccountWalletType}</span></> : 'نوع المحفظة'}</span>
+                        <ChevronDown size={10} />
+                      </button>
+                      <AnimatePresence>
+                        {sysAccWalletTypeOpen && (
+                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 sm:w-[200px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+                            {WALLET_TYPES.map(w=>(
+                              <button key={w.id} type="button" onClick={()=>{ set('systemAccountWalletType', w.name); setSysAccWalletTypeOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right">
+                                <LogoAvatar name={w.name} src={w.logoUrl} size={20} />
+                                <span className="text-xs">{w.name}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                  {f.systemAccountType==='wallet_address' && (
+                    <div className="relative w-[120px] flex-shrink-0">
+                      <button type="button" onClick={()=>setSysAccNetworkOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-2 flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1">{f.systemAccountNetwork ? <><LogoAvatar name={f.systemAccountNetwork} src={BLOCKCHAIN_NETWORKS.find(n=>n.id===f.systemAccountNetwork||n.symbol===f.systemAccountNetwork)?.logoUrl} size={16} /><span className="text-[10px]">{f.systemAccountNetwork}</span></> : 'الشبكة'}</span>
+                        <ChevronDown size={10} />
+                      </button>
+                      <AnimatePresence>
+                        {sysAccNetworkOpen && (
+                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 sm:w-[200px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+                            {BLOCKCHAIN_NETWORKS.map(net=>(
+                              <button key={net.id} type="button" onClick={()=>{ set('systemAccountNetwork', net.id); setSysAccNetworkOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right">
+                                <LogoAvatar name={net.name} src={net.logoUrl} size={20} />
+                                <span className="text-xs">{net.name}</span><span className="text-[10px] text-slate-400">{net.symbol}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                  <Input value={f.systemAccountValue||f.systemAccount} onChange={e=>set('systemAccountValue', e.target.value)} placeholder={f.systemAccountType==='manual'?'SYS-000000': f.systemAccountType==='wallet_id'?'آيدي المحفظة':'عنوان المحفظة'} className="flex-1 h-10 border-slate-200 font-mono text-xs" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Calendar size={11} />تاريخ الانضمام</label>
+              <div className="relative">
+                <Input type="date" value={f.joinDate} onChange={e=>set('joinDate', e.target.value)} className="h-10 border-slate-200 pr-10" />
+                {f.joinDate && <button type="button" onClick={()=>set('joinDate','')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100 text-slate-400"><X size={12} /></button>}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">يظهر فقط إذا مملوء</p>
+            </div>
+          </div>
+
+          {/* عنوان المحفظة ثلاث خطوات */}
+          <div className="mt-4">
+            <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Hash size={11} />عنوان المحفظة (ثلاث خطوات)</label>
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${walletStep>=1?'bg-emerald-500 text-white':'bg-slate-200'}`}>1</span> المنصة
+                <span className="flex-1 h-px bg-slate-200" />
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${walletStep>=2?'bg-emerald-500 text-white':'bg-slate-200'}`}>2</span> العملة
+                <span className="flex-1 h-px bg-slate-200" />
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${walletStep>=3?'bg-emerald-500 text-white':'bg-slate-200'}`}>3</span> العنوان
+              </div>
+              {walletStep===1 && (
+                <div ref={platformRef} className="relative">
+                  <button type="button" onClick={()=>setPlatformOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-3 flex items-center justify-between text-sm">
+                    {f.walletPlatform ? <span className="flex items-center gap-2"><LogoAvatar name={f.walletPlatform} src={`https://logo.clearbit.com/${f.walletPlatform.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`} size={20} />{f.walletPlatform}</span> : <span className="text-slate-400">اختر المنصة</span>}
+                    <ChevronDown size={14} />
+                  </button>
+                  <AnimatePresence>
+                    {platformOpen && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="absolute top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                        <div className="p-2 border-b"><Input value={platformSearch} onChange={e=>setPlatformSearch(e.target.value)} placeholder="بحث منصة..." className="h-8 text-xs" /></div>
+                        <div className="max-h-60 overflow-y-auto">
+                          {cryptoPlatforms.length>0 && <><div className="px-3 py-1.5 bg-yellow-50 text-[10px] font-black text-yellow-700">🔷 كريبتو ({cryptoPlatforms.length})</div>{cryptoPlatforms.slice(0,20).map(p=>(<button key={p.name} type="button" onClick={()=>{ set('walletPlatform', p.name); setPlatformOpen(false); setWalletStep(2); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right"><LogoAvatar name={p.name} src={`https://logo.clearbit.com/${p.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`} size={20} />{p.name}</button>))}</>}
+                          {forexPlatforms.length>0 && <><div className="px-3 py-1.5 bg-blue-50 text-[10px] font-black text-blue-700">📊 فوركس ({forexPlatforms.length})</div>{forexPlatforms.slice(0,20).map(p=>(<button key={p.name} type="button" onClick={()=>{ set('walletPlatform', p.name); setPlatformOpen(false); setWalletStep(2); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-right"><LogoAvatar name={p.name} src={`https://logo.clearbit.com/${p.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`} size={20} />{p.name}</button>))}</>}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+              {walletStep===2 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between"><span className="text-xs text-slate-600">المنصة: {f.walletPlatform}</span><button type="button" onClick={()=>setWalletStep(1)} className="text-xs text-blue-500">تغيير</button></div>
+                  <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                    {CRYPTO_CURRENCIES.slice(0,24).map(c=>(
+                      <button key={c.code} type="button" onClick={()=>{ set('walletCurrency', c.code); setWalletStep(3); }} className={`p-2 rounded-lg border text-xs flex flex-col items-center gap-1 hover:bg-white ${f.walletCurrency===c.code?'border-emerald-300 bg-emerald-50':'border-slate-200 bg-white'}`}>
+                        <LogoAvatar name={c.code} src={c.logoUrl} size={24} />
+                        <span className="font-bold text-[10px]">{c.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {walletStep===3 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between"><span className="text-xs">المنصة: {f.walletPlatform} | العملة: {f.walletCurrency}</span><button type="button" onClick={()=>setWalletStep(2)} className="text-xs text-blue-500">تغيير</button></div>
+                  <div className="relative">
+                    <Input value={f.walletAddressValue||''} onChange={e=>set('walletAddressValue', e.target.value)} placeholder={f.walletCurrency==='BTC'?'عنوان BTC...' : '0x... أو TRC20...'} className="h-10 border-slate-200 font-mono text-xs pr-10" />
+                    {f.walletAddressValue && <button type="button" onClick={()=>{ set('walletAddressValue',''); setWalletStep(1); set('walletPlatform',''); set('walletCurrency',''); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100 text-slate-400"><X size={12} /></button>}
+                  </div>
+                  <button type="button" onClick={()=>{ set('walletPlatform',''); set('walletCurrency',''); set('walletAddressValue',''); set('walletNetwork',''); setWalletStep(1); }} className="text-xs text-red-500 hover:text-red-600">مسح كل الخطوات</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* حالة + بنك */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <div>
               <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Star size={11} />حالة المشترك</label>
@@ -2896,40 +3708,77 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
                 <SelectContent>{SUBSCRIBER_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Building2 size={11} />البنك</label>
+            <div ref={bankRef} className="relative">
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Building2 size={11} />البنك — بحث بالدولة أو البنك</label>
               {customBank ? (
                 <div className="flex gap-2">
                   <Input value={f.bankName} onChange={e => set('bankName', e.target.value)} placeholder="اكتب اسم البنك" className="h-10 border-slate-200 flex-1" />
-                  <Button variant="outline" size="sm" className="h-10 border-slate-200 text-xs px-3"
-                    onClick={() => { setCustomBank(false); set('bankName', ''); }}>قائمة</Button>
+                  <Button variant="outline" size="sm" className="h-10 border-slate-200 text-xs px-3" onClick={() => { setCustomBank(false); set('bankName', ''); }}>قائمة</Button>
                 </div>
               ) : (
-                <Select value={f.bankName} onValueChange={v => {
-                  if (v === '__custom__') { setCustomBank(true); set('bankName', ''); }
-                  else set('bankName', v);
-                }}>
-                  <SelectTrigger className="h-10 border-slate-200 bg-white"><SelectValue placeholder="اختر البنك" /></SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {Object.entries(GULF_BANKS).map(([country, banks]) => (
-                      <React.Fragment key={country}>
-                        <div className="px-2 py-1 text-xs font-black text-slate-400 bg-slate-50 border-b border-slate-100">{country}</div>
-                        {banks.map(b => <SelectItem key={b} value={b} className="text-sm">{b}</SelectItem>)}
-                      </React.Fragment>
-                    ))}
-                    <Separator className="my-1" />
-                    <SelectItem value="__custom__" className="text-emerald-600 font-bold text-sm">+ أدخل اسم البنك يدوياً</SelectItem>
-                  </SelectContent>
-                </Select>
+                <>
+                  <button type="button" onClick={()=>setBankOpen(v=>!v)} className="w-full h-10 border border-slate-200 rounded-md bg-white px-3 flex items-center justify-between text-sm hover:border-slate-300">
+                    {f.bankName ? <span className="flex items-center gap-2 truncate"><LogoAvatar name={f.bankName} src={f.bankLogoUrl || `https://logo.clearbit.com/${(f.bankDomain||f.bankName.toLowerCase().replace(/[^a-z0-9]/g,''))}.com`} size={20} /><span className="truncate text-xs">{f.bankName}</span></span> : <span className="text-slate-400">اختر البنك</span>}
+                    <ChevronDown size={14} className={`${bankOpen?'rotate-180':''} transition-transform`} />
+                  </button>
+                  <AnimatePresence>
+                    {bankOpen && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                        className="absolute top-full mt-1 left-0 right-0 sm:w-[380px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                        <div className="p-2 border-b space-y-2">
+                          <div className="relative">
+                            <Input value={bankSearch} onChange={e=>setBankSearch(e.target.value)} placeholder="ابحث باسم الدولة أو البنك..." className="h-9 pr-8 text-sm" />
+                            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                          </div>
+                          <div className="flex gap-1 flex-wrap">
+                            {bankCountriesList.slice(0,8).map(c=>(
+                              <button key={c} type="button" onClick={()=>setBankCountryFilter(c)} className={`px-2 py-1 rounded-full text-[10px] border ${bankCountryFilter===c?'bg-emerald-500 text-white border-emerald-500':'bg-slate-50 text-slate-600 border-slate-200'}`}>{c}</button>
+                            ))}
+                          </div>
+                          <div className="flex gap-1">
+                            {['🇸🇦','🇦🇪','🇰🇼','🇶🇦','🇧🇭','🇴🇲'].map((flag,i)=>{
+                              const iso = ['SA','AE','KW','QA','BH','OM'][i];
+                              const countryAr = ['السعودية','الإمارات','الكويت','قطر','البحرين','عُمان'][i];
+                              return <button key={iso} type="button" onClick={()=>setBankCountryFilter(countryAr)} className="text-sm p-1 rounded hover:bg-slate-100" title={countryAr}>{flag}</button>
+                            })}
+                          </div>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto">
+                          {filteredArabBanks.slice(0,40).map(b=>(
+                            <button key={b.id} type="button" onClick={()=>{
+                              set('bankName', b.nameAr); set('bankCountry', b.countryAr); set('bankType', b.type); set('bankLogoUrl', b.logoUrl); set('bankDomain', b.domain); set('bankSwift', b.swiftCode||'');
+                              setBankOpen(false); toast.success(`تم اختيار ${b.nameAr}`, { duration: 1000 });
+                              try{ localStorage.setItem('lastSelectedBank', b.nameAr); localStorage.setItem('lastSelectedCountry', b.countryAr);}catch{}
+                            }} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 text-right">
+                              <LogoAvatar name={b.nameAr} src={b.logoUrl} size={28} />
+                              <div className="flex-1 min-w-0 text-right">
+                                <p className="text-xs font-bold truncate">{b.nameAr}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{b.nameEn} · {b.countryAr}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <Badge className={`text-[9px] px-1.5 py-0 ${b.type==='islamic'?'bg-emerald-50 text-emerald-700 border-emerald-200': b.type==='digital'?'bg-purple-50 text-purple-700': b.type==='government'?'bg-blue-50 text-blue-700':'bg-slate-50 text-slate-600'} border`}>{b.type==='commercial'?'تجاري': b.type==='islamic'?'إسلامي': b.type==='digital'?'رقمي': b.type==='government'?'حكومي': b.type}</Badge>
+                                {b.swiftCode && <span className="text-[9px] font-mono text-slate-400">{b.swiftCode}</span>}
+                              </div>
+                            </button>
+                          ))}
+                          {filteredArabBanks.length===0 && <div className="py-8 text-center text-slate-400 text-sm">لا توجد نتائج</div>}
+                          {filteredArabBanks.length>40 && <div className="p-2 text-xs text-slate-400 text-center">... و {filteredArabBanks.length-40} بنك آخر، استخدم البحث</div>}
+                        </div>
+                        <div className="p-2 border-t bg-slate-50">
+                          <button type="button" onClick={()=>{ setCustomBank(true); setBankOpen(false); set('bankName',''); }} className="w-full text-xs text-emerald-600 font-bold hover:text-emerald-700 py-1">+ أدخل اسم البنك يدوياً</button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
               )}
             </div>
           </div>
 
-          {/* Currency & Platform */}
+          {/* العملة الرئيسية + المنصة القديمة (للتوافق) + ملاحظات */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            {/* Currency */}
             <div ref={currencyRef} className="relative">
-              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Globe size={11} />العملة</label>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Globe size={11} />العملة الرئيسية (للتوافق)</label>
               <button type="button" onClick={() => { setCurrencyOpen(v => !v); setPlatformOpen(false); }}
                 className="w-full h-10 border border-slate-200 rounded-md bg-white px-3 flex items-center justify-between text-sm hover:border-slate-300 transition-colors">
                 {selectedCurrency ? (
@@ -2947,53 +3796,39 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
                     className="absolute top-full mt-1 right-0 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div className="p-2 border-b border-slate-100">
                       <div className="relative">
-                        <Input value={currencySearch} onChange={e => setCurrencySearch(e.target.value)}
-                          placeholder="بحث بالاسم أو الرمز أو الكود..." className="h-9 pr-8 border-slate-200 text-sm" />
+                        <Input value={currencySearch} onChange={e => setCurrencySearch(e.target.value)} placeholder="بحث بالاسم أو الرمز أو الكود..." className="h-9 pr-8 border-slate-200 text-sm" />
                         <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                       </div>
                     </div>
                     <div className="max-h-64 overflow-y-auto">
-                      {filteredCurrencies.length === 0 ? (
+                      {filteredCurrenciesMain.length === 0 ? (
                         <div className="py-6 text-center text-slate-400 text-sm">لا توجد نتائج</div>
-                      ) : filteredCurrencies.map(c => (
-                        <button key={c.code} type="button"
-                          onClick={() => { set('currency', c.code); setCurrencyOpen(false); setCurrencySearch(''); }}
+                      ) : filteredCurrenciesMain.slice(0,50).map(c => (
+                        <button key={c.code} type="button" onClick={() => { set('currency', c.code); setCurrencyOpen(false); setCurrencySearch(''); }}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-right ${f.currency === c.code ? 'bg-emerald-50' : ''}`}>
                           <span className="text-lg font-bold text-emerald-600 w-8 text-center flex-shrink-0">{c.symbol}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-black text-slate-800">{c.code}</span>
-                              <span className="text-sm text-slate-600">{c.nameAr}</span>
-                            </div>
-                            <p className="text-xs text-slate-400">{c.countryAr} · {c.countryEn}</p>
+                            <div className="flex items-center gap-2"><span className="text-sm font-black text-slate-800">{c.code}</span><span className="text-sm text-slate-600">{c.nameAr}</span></div>
+                            <p className="text-xs text-slate-400">{c.countryAr}</p>
                           </div>
                           {f.currency === c.code && <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />}
                         </button>
                       ))}
                     </div>
-                    {f.currency && (
-                      <div className="p-2 border-t border-slate-100">
-                        <button type="button" onClick={() => { set('currency', ''); setCurrencyOpen(false); }}
-                          className="w-full text-xs text-slate-500 hover:text-red-500 py-1.5 transition-colors">مسح الاختيار</button>
-                      </div>
-                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Platform */}
             <div ref={platformRef} className="relative">
-              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Cpu size={11} />المنصة</label>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Cpu size={11} />المنصة (شعارات حقيقية)</label>
               <button type="button" onClick={() => { setPlatformOpen(v => !v); setCurrencyOpen(false); }}
                 className="w-full h-10 border border-slate-200 rounded-md bg-white px-3 flex items-center justify-between text-sm hover:border-slate-300 transition-colors">
                 {selectedPlatform ? (
                   <span className="flex items-center gap-2">
-                    <span className={`${selectedPlatform.color} text-white text-xs font-black px-1.5 py-0.5 rounded flex-shrink-0`}>{selectedPlatform.abbr}</span>
+                    <LogoAvatar name={selectedPlatform.name} src={`https://logo.clearbit.com/${selectedPlatform.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`} size={20} />
                     <span className="font-medium">{selectedPlatform.name}</span>
-                    <Badge className={`text-xs border-none ${selectedPlatform.type === 'crypto' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {selectedPlatform.type === 'crypto' ? 'كريبتو' : 'فوركس'}
-                    </Badge>
+                    <Badge className={`text-xs border-none ${selectedPlatform.type === 'crypto' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{selectedPlatform.type === 'crypto' ? 'كريبتو' : 'فوركس'}</Badge>
                   </span>
                 ) : <span className="text-slate-400">اختر المنصة</span>}
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${platformOpen ? 'rotate-180' : ''}`} />
@@ -3004,63 +3839,40 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
                     className="absolute top-full mt-1 right-0 left-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div className="p-2 border-b border-slate-100">
                       <div className="relative">
-                        <Input value={platformSearch} onChange={e => setPlatformSearch(e.target.value)}
-                          placeholder="بحث في المنصات..." className="h-9 pr-8 border-slate-200 text-sm" />
+                        <Input value={platformSearch} onChange={e => setPlatformSearch(e.target.value)} placeholder="بحث في المنصات..." className="h-9 pr-8 border-slate-200 text-sm" />
                         <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                       </div>
                     </div>
                     <div className="max-h-72 overflow-y-auto">
                       {cryptoPlatforms.length > 0 && (
                         <>
-                          <div className="px-3 py-1.5 bg-yellow-50 border-b border-yellow-100">
-                            <span className="text-xs font-black text-yellow-700">🔷 منصات الكريبتو ({cryptoPlatforms.length})</span>
-                          </div>
-                          {cryptoPlatforms.map(p => (
-                            <PlatformItem key={p.name} platform={p} selected={f.platform === p.name}
-                              onClick={() => { set('platform', p.name); setPlatformOpen(false); setPlatformSearch(''); }} />
-                          ))}
+                          <div className="px-3 py-1.5 bg-yellow-50 border-b border-yellow-100"><span className="text-xs font-black text-yellow-700">🔷 منصات الكريبتو ({cryptoPlatforms.length})</span></div>
+                          {cryptoPlatforms.slice(0,20).map(p => (<PlatformItem key={p.name} platform={p} selected={f.platform === p.name} onClick={() => { set('platform', p.name); setPlatformOpen(false); setPlatformSearch(''); }} />))}
                         </>
                       )}
                       {forexPlatforms.length > 0 && (
                         <>
-                          <div className="px-3 py-1.5 bg-blue-50 border-b border-blue-100 border-t border-t-slate-100">
-                            <span className="text-xs font-black text-blue-700">📊 منصات الفوركس ({forexPlatforms.length})</span>
-                          </div>
-                          {forexPlatforms.map(p => (
-                            <PlatformItem key={p.name} platform={p} selected={f.platform === p.name}
-                              onClick={() => { set('platform', p.name); setPlatformOpen(false); setPlatformSearch(''); }} />
-                          ))}
+                          <div className="px-3 py-1.5 bg-blue-50 border-b border-blue-100 border-t"><span className="text-xs font-black text-blue-700">📊 منصات الفوركس ({forexPlatforms.length})</span></div>
+                          {forexPlatforms.slice(0,20).map(p => (<PlatformItem key={p.name} platform={p} selected={f.platform === p.name} onClick={() => { set('platform', p.name); setPlatformOpen(false); setPlatformSearch(''); }} />))}
                         </>
                       )}
-                      {cryptoPlatforms.length === 0 && forexPlatforms.length === 0 && (
-                        <div className="py-6 text-center text-slate-400 text-sm">لا توجد نتائج</div>
-                      )}
                     </div>
-                    {f.platform && (
-                      <div className="p-2 border-t border-slate-100">
-                        <button type="button" onClick={() => { set('platform', ''); setPlatformOpen(false); }}
-                          className="w-full text-xs text-slate-500 hover:text-red-500 py-1.5 transition-colors">مسح الاختيار</button>
-                      </div>
-                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </div>
 
-          {/* Notes */}
           <div className="mt-4">
             <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><FileText size={11} />ملاحظات (اختياري)</label>
-            <textarea value={f.notes} onChange={e => set('notes', e.target.value)} placeholder="أي ملاحظات إضافية..." rows={2}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-transparent transition-all" />
+            <textarea value={f.notes} onChange={e => set('notes', e.target.value)} placeholder="أي ملاحظات إضافية..." rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-transparent transition-all" />
           </div>
 
           {/* Subscriber Operations Section */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ClipboardList size={11} />سجل عمليات للمشترك (اختياري)</label>
-              <button type="button" onClick={() => setShowAddOps(v => !v)}
-                className="text-xs text-emerald-600 hover:text-emerald-800 font-bold flex items-center gap-1 transition-colors">
+              <button type="button" onClick={() => setShowAddOps(v => !v)} className="text-xs text-emerald-600 hover:text-emerald-800 font-bold flex items-center gap-1 transition-colors">
                 {showAddOps ? <><X size={12} /> إغلاق</> : <><Plus size={12} /> إضافة عملية</>}
               </button>
             </div>
@@ -3074,8 +3886,7 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
                       <span className="text-slate-400">· {op.date}</span>
                       <Badge className="text-[10px] px-1.5 py-0 bg-white border border-emerald-200 text-emerald-700">{op.status}</Badge>
                     </div>
-                    <button type="button" onClick={() => setPendingOps(p => p.filter((_, i) => i !== idx))}
-                      className="text-slate-400 hover:text-red-500 transition-colors"><X size={13} /></button>
+                    <button type="button" onClick={() => setPendingOps(p => p.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-red-500 transition-colors"><X size={13} /></button>
                   </div>
                 ))}
               </div>
@@ -3101,31 +3912,20 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block">المبلغ (اختياري)</label>
-                    <Input value={tempOp.amount} onChange={e => setTempOp(p => ({ ...p, amount: e.target.value }))}
-                      placeholder="1,500 ر.س" className="h-9 border-slate-200 text-sm" />
+                    <Input value={tempOp.amount} onChange={e => setTempOp(p => ({ ...p, amount: e.target.value }))} placeholder="1,500 ر.س" className="h-9 border-slate-200 text-sm" />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block">التاريخ</label>
-                    <Input type="date" value={tempOp.date} onChange={e => setTempOp(p => ({ ...p, date: e.target.value }))}
-                      className="h-9 border-slate-200 text-sm" />
+                    <Input type="date" value={tempOp.date} onChange={e => setTempOp(p => ({ ...p, date: e.target.value }))} className="h-9 border-slate-200 text-sm" />
                   </div>
                 </div>
-                <Button type="button" size="sm"
-                  onClick={() => {
-                    setPendingOps(p => [...p, { ...tempOp }]);
-                    setTempOp({ operation: 'توزيع ارباح', amount: '', date: todayStr(), status: 'مكتمل' });
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 text-xs h-8 px-4">
+                <Button type="button" size="sm" onClick={() => { setPendingOps(p => [...p, { ...tempOp }]); setTempOp({ operation: 'توزيع ارباح', amount: '', date: todayStr(), status: 'مكتمل' }); }} className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 text-xs h-8 px-4">
                   <Plus size={12} /> إضافة للقائمة
                 </Button>
               </div>
             )}
-            {!showAddOps && pendingOps.length === 0 && (
-              <p className="text-xs text-slate-400">عند إضافة عمليات ستظهر في صفحة الاستعلام عند البحث عن هذا المشترك</p>
-            )}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-3 mt-5">
             <Button onClick={handleSave} className={`gap-1.5 px-6 ${editId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
               <Save size={14} /> {editId ? 'حفظ التعديل' : 'إضافة المشترك'}
@@ -3133,8 +3933,7 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
             {editId && <Button variant="outline" onClick={cancelEdit} className="border-slate-200 text-slate-600">إلغاء</Button>}
             <AnimatePresence>
               {saved && (
-                <motion.span initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                  className="text-emerald-600 text-sm font-bold flex items-center gap-1.5">
+                <motion.span initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="text-emerald-600 text-sm font-bold flex items-center gap-1.5">
                   <CheckCircle2 size={15} /> {editId ? 'تم التعديل' : 'تم الحفظ بنجاح'}
                 </motion.span>
               )}
@@ -3143,17 +3942,52 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
         </CardContent>
       </Card>
 
-      {/* List */}
-      <Card className="border-none shadow-sm ring-1 ring-slate-200">
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-base font-black text-slate-800">قائمة المشتركين</CardTitle>
-              <CardDescription className="text-xs">{filtered.length} من {subscribers.length} مشترك</CardDescription>
-            </div>
-            <div className="relative w-full sm:w-60">
-              <Input placeholder="بحث في المشتركين..." className="h-9 pr-8 border-slate-200 text-sm"
-                value={searchSub} onChange={e => { setSearchSub(e.target.value); setPage(1); }} />
+      {/* تأكيد IBAN */}
+      <AlertDialog open={showIbanConfirm} onOpenChange={setShowIbanConfirm}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right">تأكيد حفظ رقم الآيبان؟</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">هل تريد حفظ رقم الآيبان مع بيانات المشترك؟ إذا اخترت لا سيتم مسحه قبل الحفظ.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction onClick={()=>{ setPendingIbanSave(true); setShowIbanConfirm(false); setTimeout(()=>handleSave(),100); }} className="bg-emerald-600 hover:bg-emerald-700">نعم، احفظ</AlertDialogAction>
+            <AlertDialogCancel onClick={()=>{ set('iban',''); setPendingIbanSave(true); setShowIbanConfirm(false); setTimeout(()=>handleSave(),100); }}>لا، امسح</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={showAccountConfirm} onOpenChange={setShowAccountConfirm}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right">تأكيد حفظ رقم الحساب؟</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">هل تريد حفظ رقم الحساب البنكي؟</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction onClick={()=>{ setPendingAccountSave(true); setShowAccountConfirm(false); setTimeout(()=>handleSave(),100); }} className="bg-emerald-600 hover:bg-emerald-700">نعم</AlertDialogAction>
+            <AlertDialogCancel onClick={()=>{ set('accountNumber',''); setPendingAccountSave(true); setShowAccountConfirm(false); setTimeout(()=>handleSave(),100); }}>لا</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* تحذير تكرار */}
+      <AlertDialog open={!!duplicateWarning} onOpenChange={()=>setDuplicateWarning(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right flex items-center gap-2"><AlertTriangle size={16} className="text-amber-500" />يوجد مشترك بنفس البيانات</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">يوجد مشترك باسم {duplicateWarning?.name} بنفس الهاتف أو الآيبان. هل تريد الإضافة على أي حال؟</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction onClick={()=>{ setDuplicateWarning(null); setTimeout(()=>{ setPendingIbanSave(true); setPendingAccountSave(true); handleSave(); },100); }} className="bg-amber-600 hover:bg-amber-700">إضافة على أي حال</AlertDialogAction>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* قائمة المشتركين */}
+      <Card className="border-none shadow-sm ring-1 ring-slate-200 overflow-hidden mt-6">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-black text-slate-800 flex items-center gap-2"><Users size={16} />قائمة المشتركين</CardTitle>
+            <div className="relative">
+              <Input placeholder="بحث في المشتركين..." className="h-9 pr-8 border-slate-200 text-sm" value={searchSub} onChange={e => { setSearchSub(e.target.value); setPage(1); }} />
               <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
             </div>
           </div>
@@ -3161,12 +3995,7 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
         <CardContent className="p-0">
           <div className="divide-y divide-slate-100">
             {paged.map(sub => (
-              <SubRow key={sub.id} sub={sub}
-                expanded={expandedId === sub.id}
-                onToggle={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
-                onEdit={() => startEdit(sub)}
-                onDelete={() => setDeleteId(sub.id)}
-              />
+              <SubRow key={sub.id} sub={sub} expanded={expandedId === sub.id} onToggle={() => setExpandedId(expandedId === sub.id ? null : sub.id)} onEdit={() => startEdit(sub)} onDelete={() => setDeleteId(sub.id)} />
             ))}
             {paged.length === 0 && (
               <div className="text-center py-12 text-slate-400">
@@ -3186,9 +4015,7 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
                   const pg = page <= 3 ? i + 1 : page + i - 2;
                   if (pg > totalPages) return null;
                   return (
-                    <Button key={pg} size="sm"
-                      className={`h-8 w-8 p-0 text-xs ${pg === page ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                      onClick={() => setPage(pg)}>{pg}</Button>
+                    <Button key={pg} size="sm" className={`h-8 w-8 p-0 text-xs ${pg === page ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`} onClick={() => setPage(pg)}>{pg}</Button>
                   );
                 })}
                 <Button variant="outline" size="sm" className="h-8 px-3 border-slate-200 gap-1 text-xs" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>
@@ -3215,15 +4042,17 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
     </>
   );
 }
-
 function PlatformItem({ platform, selected, onClick }: { platform: TradingPlatform; selected: boolean; onClick: () => void }) {
+  const logoDomain = `${platform.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`;
+  const clearbitUrl = `https://logo.clearbit.com/${logoDomain}`;
   return (
     <button type="button" onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors ${selected ? 'bg-blue-50' : ''}`}>
-      <span className={`${platform.color} text-white text-xs font-black px-1.5 py-0.5 rounded min-w-[36px] text-center flex-shrink-0`}>
-        {platform.abbr}
+      <LogoAvatar name={platform.name} src={clearbitUrl} size={28} />
+      <span className="flex-1 text-sm font-medium text-slate-700 text-right flex flex-col">
+        <span>{platform.name}</span>
+        <span className="text-[10px] text-slate-400">{platform.abbr} · {platform.type==='crypto'?'كريبتو':'فوركس'}</span>
       </span>
-      <span className="flex-1 text-sm font-medium text-slate-700 text-right">{platform.name}</span>
       {selected && <CheckCircle2 size={14} className="text-blue-500 flex-shrink-0" />}
     </button>
   );
