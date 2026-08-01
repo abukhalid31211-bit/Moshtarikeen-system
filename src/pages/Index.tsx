@@ -2597,6 +2597,7 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
   const [showWallet, setShowWallet] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [withdrawalStage, setWithdrawalStage] = useState<'idle' | 'confirm' | 'completed'>('idle');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const runSearch = () => {
@@ -2608,6 +2609,7 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
     setProgress(0);
     setOpsPage(1);
     setShowWallet(false);
+    setWithdrawalStage('idle');
 
     let p = 0;
     intervalRef.current = setInterval(() => {
@@ -2654,7 +2656,7 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
 
   const clear = () => {
     setQuery(''); setFound(null); setSearched(false); setOpsPage(1);
-    setIsSearching(false); setProgress(0);
+    setIsSearching(false); setProgress(0); setWithdrawalStage('idle');
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
@@ -2902,6 +2904,38 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
               </CardContent>
             </Card>
             )}
+
+            {/* سحب الأرباح */}
+            <div className="flex justify-center pt-2 pb-1">
+              {withdrawalStage === 'idle' && (
+                <Button onClick={() => setWithdrawalStage('confirm')}
+                  className="gap-2 h-11 px-6 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-black rounded-2xl shadow-lg shadow-amber-400/25 transition-all text-base">
+                  <Banknote size={18} /> سحب الأرباح
+                </Button>
+              )}
+              {withdrawalStage === 'confirm' && (
+                <Button onClick={() => setWithdrawalStage('completed')}
+                  className="gap-2 h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/25 transition-all text-base">
+                  <CheckCircle2 size={18} /> تأكيد سحب الأرباح
+                </Button>
+              )}
+              {withdrawalStage === 'completed' && (
+                <div className="w-full max-w-lg mx-auto">
+                  {found?.withdrawalText ? (
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 ring-1 ring-emerald-200 text-center shadow-sm">
+                      <CheckCircle2 size={22} className="mx-auto mb-2 text-emerald-600" />
+                      <p className="text-xs text-emerald-600 font-bold mb-1">تم تأكيد سحب الأرباح</p>
+                      <p className="text-base font-black text-slate-800 leading-relaxed">{found.withdrawalText}</p>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-red-50 ring-1 ring-red-200 text-center shadow-sm">
+                      <AlertCircle size={22} className="mx-auto mb-2 text-red-500" />
+                      <p className="text-sm font-bold text-red-600">لا يوجد نص سحب مُدخل لهذا المشترك.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* زر الطباعة والتصدير */}
             <div className="flex justify-center pt-2 pb-1">
