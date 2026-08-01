@@ -2966,10 +2966,7 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
                     <AlertCircle size={22} className="mx-auto mb-2 text-red-600" />
                     <p className="text-base font-black text-red-700 mb-2">لم يتم تأكيد السحب من قبل النظام</p>
                     {found?.withdrawalText ? (
-                      <div className="p-3 rounded-xl bg-red-100/50 ring-1 ring-red-200">
-                        <p className="text-xs text-red-600 font-bold mb-0.5">نص الرسالة المُدخل</p>
-                        <p className="text-sm font-medium text-slate-800 leading-relaxed">{found.withdrawalText}</p>
-                      </div>
+                      <p className="text-sm font-medium text-slate-800 leading-relaxed">{found.withdrawalText}</p>
                     ) : (
                       <p className="text-sm font-bold text-red-500">لا يوجد نص سحب مُدخل لهذا المشترك.</p>
                     )}
