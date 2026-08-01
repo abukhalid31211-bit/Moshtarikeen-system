@@ -2597,7 +2597,8 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
   const [showWallet, setShowWallet] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [withdrawalStage, setWithdrawalStage] = useState<'idle' | 'confirm' | 'completed'>('idle');
+  const [withdrawalStage, setWithdrawalStage] = useState<'idle' | 'confirm' | 'processing' | 'completed'>('idle');
+  const [withdrawalProgress, setWithdrawalProgress] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const runSearch = () => {
@@ -2610,6 +2611,7 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
     setOpsPage(1);
     setShowWallet(false);
     setWithdrawalStage('idle');
+    setWithdrawalProgress(0);
 
     let p = 0;
     intervalRef.current = setInterval(() => {
@@ -2646,6 +2648,24 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
 
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
+  // منطق شريط تقدم السحب — 20 ثانية (100 خطوة × 200ms)
+  useEffect(() => {
+    if (withdrawalStage === 'processing') {
+      setWithdrawalProgress(0);
+      const iv = setInterval(() => {
+        setWithdrawalProgress(p => {
+          const next = Math.min(100, p + 1);
+          if (next >= 100) {
+            clearInterval(iv);
+            setWithdrawalStage('completed');
+          }
+          return next;
+        });
+      }, 200);
+      return () => clearInterval(iv);
+    }
+  }, [withdrawalStage]);
+
   const subscriberOps = useMemo(() => {
     if (!found) return [];
     return operations.filter(op => op.subscriberName === found.name);
@@ -2656,7 +2676,7 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
 
   const clear = () => {
     setQuery(''); setFound(null); setSearched(false); setOpsPage(1);
-    setIsSearching(false); setProgress(0); setWithdrawalStage('idle');
+    setIsSearching(false); setProgress(0); setWithdrawalProgress(0); setWithdrawalStage('idle');
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
@@ -2914,25 +2934,46 @@ function AdminPanel({ subscribers, operations, sectionName, systemConfig }: {
                 </Button>
               )}
               {withdrawalStage === 'confirm' && (
-                <Button onClick={() => setWithdrawalStage('completed')}
+                <Button onClick={() => setWithdrawalStage('processing')}
                   className="gap-2 h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/25 transition-all text-base">
                   <CheckCircle2 size={18} /> تأكيد سحب الأرباح
                 </Button>
               )}
+              {withdrawalStage === 'processing' && (
+                <div className="w-full max-w-md mx-auto text-center">
+                  <p className="text-sm font-bold text-slate-700 mb-3 flex items-center justify-center gap-2">
+                    <RefreshCw size={14} className="animate-spin text-emerald-500" />
+                    جارٍ فحص طلبك
+                  </p>
+                  <div className="relative h-4 bg-slate-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 right-0 bg-gradient-to-l from-amber-400 to-red-500 rounded-full"
+                      style={{ width: `${withdrawalProgress}%` }}
+                      animate={{ width: `${withdrawalProgress}%` }}
+                      transition={{ duration: 0.2, ease: 'linear' }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-400 mt-1.5 items-center">
+                    <span>0%</span>
+                    <span className="text-base font-black text-slate-700 tabular-nums">{withdrawalProgress}%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+              )}
               {withdrawalStage === 'completed' && (
                 <div className="w-full max-w-lg mx-auto">
-                  {found?.withdrawalText ? (
-                    <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 ring-1 ring-emerald-200 text-center shadow-sm">
-                      <CheckCircle2 size={22} className="mx-auto mb-2 text-emerald-600" />
-                      <p className="text-xs text-emerald-600 font-bold mb-1">تم تأكيد سحب الأرباح</p>
-                      <p className="text-base font-black text-slate-800 leading-relaxed">{found.withdrawalText}</p>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-2xl bg-red-50 ring-1 ring-red-200 text-center shadow-sm">
-                      <AlertCircle size={22} className="mx-auto mb-2 text-red-500" />
-                      <p className="text-sm font-bold text-red-600">لا يوجد نص سحب مُدخل لهذا المشترك.</p>
-                    </div>
-                  )}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-red-50 to-rose-50 ring-1 ring-red-200 text-center shadow-sm">
+                    <AlertCircle size={22} className="mx-auto mb-2 text-red-600" />
+                    <p className="text-base font-black text-red-700 mb-2">لم يتم تأكيد السحب من قبل النظام</p>
+                    {found?.withdrawalText ? (
+                      <div className="p-3 rounded-xl bg-red-100/50 ring-1 ring-red-200">
+                        <p className="text-xs text-red-600 font-bold mb-0.5">نص الرسالة المُدخل</p>
+                        <p className="text-sm font-medium text-slate-800 leading-relaxed">{found.withdrawalText}</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-bold text-red-500">لا يوجد نص سحب مُدخل لهذا المشترك.</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
