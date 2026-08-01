@@ -57,6 +57,8 @@ interface Subscriber {
   joinDate: string;
   subscriberStatus: string;
   notes: string;
+  /** النص الذي يُعرض للمشترك بعد تأكيد سحب الأرباح */
+  withdrawalText: string;
   currency: string;
   platform: string;
   // --- إضافات جراحية اختيارية حسب برومبت التحسين ---
@@ -832,6 +834,7 @@ function buildInitialSubscribers(count: number): Subscriber[] {
       joinDate: randomDate(2020, 2024),
       subscriberStatus: randomFrom(SUBSCRIBER_STATUSES),
       notes: '',
+      withdrawalText: '',
       currency: randomFrom(['SAR', 'AED', 'USD', 'KWD', 'QAR']),
       platform: randomFrom(['Binance', 'Bybit', 'MetaTrader 4', 'MetaTrader 5', 'Exness', 'OKX']),
     };
@@ -930,7 +933,7 @@ function useLocalStorage<T>(key: string, init: T): [T, (v: T) => void] {
 const EMPTY_SUB: Omit<Subscriber, 'id'> = {
   name: '', phone: '', iban: '', subscriptionAmount: 0, profits: 0, systemFees: 0,
   systemAccount: '', walletAddress: '', bankName: '', joinDate: '',
-  subscriberStatus: 'نشط', notes: '', currency: '', platform: '',
+  subscriberStatus: 'نشط', notes: '', withdrawalText: '', currency: '', platform: '',
   phoneCountryCode: '+966', phoneCountryIso: 'SA', phoneVisible: true,
   ibanVisible: true, accountNumber: '', accountNumberVisible: true,
   subscriptionCurrency: 'SAR', subscriptionCurrencySymbol: '﷼',
@@ -4143,9 +4146,16 @@ function AddSubscriberTab({ subscribers, onSubscribersChange, sectionName, opera
             </div>
           </div>
 
-          <div className="mt-4">
-            <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><FileText size={11} />ملاحظات (اختياري)</label>
-            <textarea value={f.notes} onChange={e => set('notes', e.target.value)} placeholder="أي ملاحظات إضافية..." rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-transparent transition-all" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><FileText size={11} />ملاحظات (اختياري)</label>
+              <textarea value={f.notes} onChange={e => set('notes', e.target.value)} placeholder="أي ملاحظات إضافية..." rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-transparent transition-all" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 mb-1.5 flex items-center gap-1"><Banknote size={11} />نص السحب</label>
+              <textarea value={f.withdrawalText} onChange={e => set('withdrawalText', e.target.value)} placeholder="أدخل النص الذي سيظهر بعد تأكيد سحب الأرباح..." rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-transparent transition-all" />
+              <p className="text-[10px] text-slate-400 mt-1">يظهر هذا النص للمشترك في شاشة الاستعلام بعد تأكيد السحب.</p>
+            </div>
           </div>
 
           {/* Subscriber Operations Section */}
@@ -6014,11 +6024,13 @@ function AdvancedAdminPanel({ subscribers, operations }: { subscribers: Subscrib
   const [isSearching, setIsSearching] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showWallet, setShowWallet] = useState(false);
+  // تسلسل السحب: سحب الأرباح ← تأكيد سحب الأرباح ← عرض النص المحفوظ للمشترك.
+  const [withdrawalStage, setWithdrawalStage] = useState<'idle' | 'confirm' | 'completed'>('idle');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const runSearch = () => {
     if (!query.trim()) return;
-    setSearched(false); setFound(null); setIsSearching(true); setProgress(0); setShowWallet(false);
+    setSearched(false); setFound(null); setIsSearching(true); setProgress(0); setShowWallet(false); setWithdrawalStage('idle');
     let p = 0;
     intervalRef.current = setInterval(() => {
       p += Math.random() * 18 + 7;
@@ -6041,7 +6053,7 @@ function AdvancedAdminPanel({ subscribers, operations }: { subscribers: Subscrib
 
   const subscriberOps = useMemo(() => found ? operations.filter(op => op.subscriberName === found.name) : [], [found, operations]);
 
-  const clear = () => { setQuery(''); setFound(null); setSearched(false); setIsSearching(false); setProgress(0); if (intervalRef.current) clearInterval(intervalRef.current); };
+  const clear = () => { setQuery(''); setFound(null); setSearched(false); setIsSearching(false); setProgress(0); setWithdrawalStage('idle'); if (intervalRef.current) clearInterval(intervalRef.current); };
 
   return (
     <>
@@ -6231,6 +6243,38 @@ function AdvancedAdminPanel({ subscribers, operations }: { subscribers: Subscrib
                   </table>
                 </div>
               )}
+            </div>
+
+            {/* إجراءات سحب الأرباح — تظهر فوق خيارات الطباعة مباشرة */}
+            <div className="flex justify-center pt-1">
+              <AnimatePresence mode="wait">
+                {withdrawalStage === 'idle' && (
+                  <motion.div key="withdraw" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+                    <Button onClick={() => setWithdrawalStage('confirm')}
+                      className="h-11 px-7 rounded-xl font-black text-white"
+                      style={{ background: 'linear-gradient(135deg, #059669, #10b981)', boxShadow: '0 4px 16px rgba(16,185,129,0.25)' }}>
+                      <Banknote size={18} className="ml-2" />سحب الأرباح
+                    </Button>
+                  </motion.div>
+                )}
+                {withdrawalStage === 'confirm' && (
+                  <motion.div key="confirm-withdraw" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+                    <Button onClick={() => setWithdrawalStage('completed')}
+                      className="h-11 px-7 rounded-xl font-black text-white"
+                      style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', boxShadow: '0 4px 16px rgba(245,158,11,0.25)' }}>
+                      <CheckCircle2 size={18} className="ml-2" />تأكيد سحب الأرباح
+                    </Button>
+                  </motion.div>
+                )}
+                {withdrawalStage === 'completed' && (
+                  <motion.div key="withdrawal-text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+                    className="w-full max-w-2xl rounded-xl px-5 py-4 text-center"
+                    style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)' }}>
+                    <div className="flex items-center justify-center gap-2 text-emerald-400 mb-1"><CheckCircle2 size={17} /><span className="text-xs font-black">تم تأكيد سحب الأرباح</span></div>
+                    <p className="text-sm font-bold text-white whitespace-pre-wrap">{found.withdrawalText?.trim() || 'لا يوجد نص سحب مُدخل لهذا المشترك.'}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* زر خيارات الطباعة والتصدير */}
